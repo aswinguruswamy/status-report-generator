@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -60,8 +60,12 @@ def main(argv: list[str] | None = None, client: JiraClient | None = None, today:
     try:
         config = load_config(args.config)
         project = args.project or config.project_key
+        zone = ZoneInfo(config.timezone)
         if today is None:
-            today = datetime.now(ZoneInfo(config.timezone)).date()
+            now = datetime.now(zone)
+            today = now.date()
+        else:
+            now = datetime.combine(today, time(12), zone)  # A fixed day (tests)
         start, end = week_range(args.week) if args.week else last_full_week(today)
         formats = FORMATS[args.format] if args.format else config.output_formats
         folder = Path(args.output or config.output_folder)
@@ -76,7 +80,6 @@ def main(argv: list[str] | None = None, client: JiraClient | None = None, today:
             project, config.work_types, start, end, need_flag="flag" in config.blocked_methods
         )
         print(f"    {len(tickets)} tickets read")
-        now = datetime.now(ZoneInfo(config.timezone)) if today is None else None
         metrics = calculate(tickets, config, start, end, now=now)
         counts = metrics.counts()
         print("    " + ", ".join(f"{name} {value}" for name, value in counts.items()))
