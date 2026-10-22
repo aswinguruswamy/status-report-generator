@@ -13,6 +13,10 @@ work_types:
   - Bug
 
 # Match of Jira priority names to P1 to P5 (D21).
+# Use a list if your team has more than one name for a level, for example:
+#   P1: [Highest, Blocker]
+# A ticket with a priority that is not here goes in the "Unmapped" row,
+# and the report shows a warning.
 priority_map:
   P1: Highest
   P2: High
@@ -20,8 +24,11 @@ priority_map:
   P4: Low
   P5: Lowest
 
-# How the tool finds a blocked ticket (D14): status, flag, or label.
-blocked_method: status
+# How the tool finds a blocked ticket (D14). Use one or more of:
+#   status - the ticket is in the status named in blocked_status_name
+#   flag   - the ticket has the Jira flag
+#   label  - the ticket has the label named in blocked_label
+blocked_method: [status]
 blocked_status_name: Blocked
 blocked_label: blocked
 
