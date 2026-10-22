@@ -179,11 +179,15 @@ class JiraClient:
         for entry in (raw.get("changelog") or {}).get("histories", []):
             for item in entry.get("items", []):
                 if item.get("field") == "status":
+                    from_status = item.get("fromString")
+                    to_status = item.get("toString") or ""
                     history.append(
                         StatusChange(
                             at=_parse_datetime(entry["created"]),
-                            from_status=item.get("fromString"),
-                            to_status=item.get("toString"),
+                            from_status=from_status,
+                            to_status=to_status,
+                            from_category=categories.get((from_status or "").lower()),
+                            to_category=categories.get(to_status.lower()),
                         )
                     )
         history.sort(key=lambda change: change.at)
@@ -193,9 +197,7 @@ class JiraClient:
         resolved = _parse_datetime(f.get("resolutiondate"))
         done_date = None
         if category == "Done":
-            moves = [
-                c.at for c in history if categories.get(c.to_status.lower()) == "Done"
-            ]
+            moves = [c.at for c in history if c.to_category == "Done"]
             done_date = moves[-1] if moves else resolved  # D19: Resolved is the second check
 
         return Ticket(

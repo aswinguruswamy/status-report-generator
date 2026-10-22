@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from status_report.config import ConfigError, load_config
 from status_report.jira_client import JiraClient, JiraError
+from status_report.metrics import calculate
 from status_report.report import write_report
 
 EXIT_OK = 0
@@ -75,12 +76,16 @@ def main(argv: list[str] | None = None, client: JiraClient | None = None, today:
             project, config.work_types, start, end, need_flag="flag" in config.blocked_methods
         )
         print(f"    {len(tickets)} tickets read")
+        now = datetime.now(ZoneInfo(config.timezone)) if today is None else None
+        metrics = calculate(tickets, config, start, end, now=now)
+        counts = metrics.counts()
+        print("    " + ", ".join(f"{name} {value}" for name, value in counts.items()))
 
         use_ai = config.ai_enabled and not args.no_ai
         print(f"    AI summary: {'on' if use_ai else 'off'}")
 
         print("3/3 Writing the report...")
-        paths = write_report(tickets, project, start, end, folder, formats)
+        paths = write_report(tickets, metrics, project, folder, formats)
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return EXIT_ERROR
