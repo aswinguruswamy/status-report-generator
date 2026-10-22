@@ -18,10 +18,20 @@ A Python tool that reads Jira and writes a weekly status report. The report has 
 
 ## Setup
 
-1. Install Python 3.11 or newer.
-2. Run `pip install -r requirements.txt`.
-3. Copy `.env.example` to `.env` and add your values.
-4. Change `config.yaml` for your Jira project.
+1. Install Python 3.11 or newer. The built-in Python on a Mac is too old.
+2. Make a virtual environment: `python3.12 -m venv .venv`, then `source .venv/bin/activate`.
+3. Run `pip install -r requirements.txt`, then `pip install -e .`.
+4. Copy `.env.example` to `.env` and add your values.
+5. Change `config.yaml` for your Jira project.
+
+## Use
+
+```
+status-report                          # last full week, settings from config.yaml
+status-report --week 2026-10-19        # the week that contains this day
+status-report --project SRG --format both --no-ai
+status-report --help                   # all options
+```
 
 **Caution:** Never commit the `.env` file. It contains your secrets.
 
