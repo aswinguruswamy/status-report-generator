@@ -1,0 +1,46 @@
+# Status Report Generator - configuration
+# This file is the source of the rules (D11).
+# The Confluence page "RAG Rules" explains them.
+
+jira:
+  project_key: SRG                 # Jira project to read
+  timezone: America/Toronto        # The week is Monday to Sunday in this time zone
+
+# Work types that the tool counts (D23). Epics and subtasks are not counted.
+work_types:
+  - Story
+  - Task
+  - Bug
+
+# Match of Jira priority names to P1 to P5 (D21).
+priority_map:
+  P1: Highest
+  P2: High
+  P3: Medium
+  P4: Low
+  P5: Lowest
+
+# How the tool finds a blocked ticket (D14): status, flag, or label.
+blocked_method: status
+blocked_status_name: Blocked
+blocked_label: blocked
+
+# Ticket status rules (D21, D22).
+ticket_status:
+  amber_window_days: 2             # Amber: due in this many days and still in To Do
+  amber_only_status: To Do
+
+# Project status rules (D21).
+project_status:
+  high_priorities: [P1, P2]        # Red if one of these is red or black
+
+# AI summary (D25, D27, D28).
+ai:
+  enabled: true
+  model: claude-sonnet-5-5         # Model name. Change it here, not in the code.
+  max_tokens_per_run: 2000         # Cost limit for each run
+  hide_titles_from_ai: false       # true: send ticket keys only, no titles
+
+output:
+  folder: output                   # Excluded in .gitignore
+  formats: [markdown, html]
