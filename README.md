@@ -1,5 +1,7 @@
 # Status Report Generator
 
+[![CI](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml)
+
 A Python tool that reads Jira and writes a weekly status report. The report has a RAG status and a short AI summary.
 
 > **Status:** In development (v1.0.0 planned for Oct 27, 2026).
