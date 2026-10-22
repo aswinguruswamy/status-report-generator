@@ -14,6 +14,8 @@ class StatusChange:
     at: datetime
     from_status: str | None
     to_status: str
+    from_category: str | None = None  # "To Do", "In Progress", or "Done"
+    to_category: str | None = None
 
 
 @dataclass(frozen=True)

@@ -134,3 +134,12 @@ def test_help_lists_all_options(capsys):
     out = capsys.readouterr().out
     for option in ["--project", "--week", "--output", "--format", "--no-ai", "--config"]:
         assert option in out
+
+
+def test_report_and_progress_show_the_weekly_numbers(tmp_path, capsys):
+    run(tmp_path, "--week", "2026-10-19", "--format", "md")
+    out = capsys.readouterr().out
+    assert "closed 0, opened 1, open 1, blocked 0, overdue 0" in out
+    text = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
+    assert "## Weekly numbers" in text
+    assert "| Opened this week | 1 |" in text
