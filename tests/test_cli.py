@@ -151,3 +151,18 @@ def test_command_depends_on_the_interface_not_on_jira():
 
     assert not hasattr(cli, "JiraClient")
     assert hasattr(cli, "TicketSource")
+
+
+def test_report_shows_project_status_matrix_and_ticket_status(tmp_path, capsys):
+    run(tmp_path, "--week", "2026-10-19", "--format", "both")
+    out = capsys.readouterr().out
+    # SRG-1 is P2, due in 2 days, and still in To Do: Amber (D22).
+    assert ("Project status: Amber: 1 P2 ticket is due soon and not started (SRG-1); "
+            "the team closed 0 and opened 1 tickets.") in out
+    text = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
+    for section in ("## Project status", "## Weekly numbers", "## Priority matrix", "## Tickets"):
+        assert section in text
+    assert "**AMBER** – Amber:" in text
+    assert "| SRG-1 | Read tickets \\| Jira | Story | Amber | To Do | High | 2026-10-24 |" in text
+    page = (tmp_path / "status-report-SRG-2026-10-19.html").read_text()
+    assert "<h2>Priority matrix</h2>" in page and "<strong>AMBER</strong>" in page
