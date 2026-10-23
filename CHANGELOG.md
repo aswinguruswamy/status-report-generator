@@ -31,12 +31,18 @@ The first release of the Weekly Status Report Generator.
 - SRG-34, SRG-38: The tool removes an AI summary that negates or softens the status.
 - SRG-35: Text from Jira and the AI is safe in the Markdown report.
 - SRG-36: The status reason names at most 3 tickets for each part.
+- SRG-40: The AI answer uses structured outputs, so quotes in ticket titles cannot break it.
+  Each warning states its reason.
 
 ### Engineering
 - CI on each pull request: secret scan, style check, tests on Python 3.11, 3.12, and 3.13.
 - GitHub Actions pinned to commit SHAs, with weekly Dependabot updates.
 - Release workflow: a version tag runs the tests, builds the package, and publishes the GitHub
   release.
+
+### Verified
+- Real run against this Jira project: correct numbers, 4.5 seconds, AI summary done.
+- AI evaluation set: 6 of 6. Tests: 607, on Python 3.11, 3.12, and 3.13.
 
 ### Known limits
 - Tested on Jira Cloud team-managed projects only.

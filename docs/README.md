@@ -12,7 +12,8 @@ private, so these copies are the public record.
 | `AI-Guardrails.pdf` | AI Guardrails |
 | `Definition-of-Done.pdf` | Definition of Done |
 | `Sprint-0-Review.pdf` to `Sprint-3-Review.pdf` | Sprint reviews |
-| `Lessons-Learned.pdf` | Lessons Learned Log |
+| `Lessons-Learned-Log.pdf` | Lessons Learned Log |
+| `Project-Lessons-and-Benchmark.pdf` | Project Lessons Learned and Benchmark |
 
 Before each copy goes into Git, it is checked: no secret, no email address, and no
 private data.
