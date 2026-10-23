@@ -42,27 +42,26 @@ Rules:
 8. If the status is not Green, do not use "on track", "healthy", "no risks",
    "no concerns", "no issues", or "all good" anywhere, also not in "Next week".
 
-Answer with the write_summary tool: "summary" has the 3 to 5 sentences, and
-"next_week" has the 1 to 5 items."""
+Answer with JSON only: "summary" has the 3 to 5 sentences, and "next_week" has
+the 1 to 5 items."""
 
-# The AI answers through this tool, so the API gives a parsed object, not free text.
-# Free text broke when a ticket title had quotes (SRG-40, D49).
-SUMMARY_TOOL = {
-    "name": "write_summary",
-    "description": "Give the executive summary and the Next week items of the status report.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "summary": {"type": "string", "description": "3 to 5 short sentences."},
-            "next_week": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "1 to 5 short items.",
-            },
+# Structured outputs: the API returns JSON that matches this schema (SRG-40, D49).
+# Free text broke when a ticket title had quotes. Claude Sonnet 5.5 refuses a forced
+# tool call (400), so the schema goes in output_config, not in a tool.
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string", "description": "3 to 5 short sentences."},
+        "next_week": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "1 to 5 short items.",
         },
-        "required": ["summary", "next_week"],
     },
+    "required": ["summary", "next_week"],
+    "additionalProperties": False,
 }
+OUTPUT_CONFIG = {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}}
 
 
 class AIError(Exception):
@@ -114,7 +113,7 @@ def build_ai_input(
 
 
 def estimate_tokens(ai_input: dict) -> int:
-    text = SYSTEM_PROMPT + json.dumps(SUMMARY_TOOL) + json.dumps(ai_input, ensure_ascii=False)
+    text = SYSTEM_PROMPT + json.dumps(SUMMARY_SCHEMA) + json.dumps(ai_input, ensure_ascii=False)
     return len(text) // CHARS_PER_TOKEN + MAX_OUTPUT_TOKENS
 
 
@@ -169,7 +168,7 @@ FORM = "The AI answer is not in the agreed form"
 
 
 def _parse_text(raw: str) -> dict:
-    """The answer as free text with JSON (the fallback). Each error states its reason."""
+    """The JSON in the answer text. Each error states its reason."""
     start = raw.find("{")
     if start < 0:
         raise AIError(f"{FORM}: the answer has no JSON object.")
@@ -183,7 +182,7 @@ def _parse_text(raw: str) -> dict:
 def check_answer(answer: str | dict, ai_input: dict) -> Summary:
     """Parse and check the AI answer. Raise AIError if it breaks a rule.
 
-    The answer is the parsed tool input (a dict), or free text with JSON (the fallback).
+    The answer is the JSON text from the API, or an object that is already parsed.
     """
     data = answer if isinstance(answer, dict) else _parse_text(answer)
     if not isinstance(data, dict):
@@ -244,23 +243,22 @@ def summarize(ai_input: dict, config: Config, client) -> Summary:
             max_tokens=MAX_OUTPUT_TOKENS,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": json.dumps(ai_input, ensure_ascii=False)}],
-            tools=[SUMMARY_TOOL],
-            tool_choice={"type": "tool", "name": SUMMARY_TOOL["name"]},
+            output_config=OUTPUT_CONFIG,
         )
     except (anthropic.AnthropicError, OSError, TimeoutError) as error:
         # API errors, timeouts, and network errors all mean: no summary this week.
-        raise AIError(f"The Claude API call failed ({type(error).__name__}).") from None
+        # The reason from the API goes into the warning (SRG-40). It holds no secret.
+        status = getattr(error, "status_code", None)
+        detail = " ".join(str(getattr(error, "message", "") or "").split())[:200]
+        reason = f", {status}: {detail}" if status else ""
+        raise AIError(f"The Claude API call failed ({type(error).__name__}{reason}).") from None
 
     if getattr(response, "stop_reason", None) == "max_tokens":
         raise AIError(f"{FORM}: the answer stopped at the output limit ({MAX_OUTPUT_TOKENS} tokens).")
-    tool_inputs = [
-        block.input for block in response.content
-        if getattr(block, "type", None) == "tool_use" and getattr(block, "name", None) == SUMMARY_TOOL["name"]
-    ]
-    if tool_inputs:
-        summary = check_answer(tool_inputs[0], ai_input)
-    else:  # Fallback: an answer as text
-        summary = check_answer("".join(getattr(b, "text", "") for b in response.content), ai_input)
+    if getattr(response, "stop_reason", None) == "refusal":
+        raise AIError(f"{FORM}: the AI refused to answer.")
+    raw = "".join(getattr(block, "text", "") for block in response.content)
+    summary = check_answer(raw, ai_input)
     usage = getattr(response, "usage", None)
     return Summary(
         text=summary.text,
