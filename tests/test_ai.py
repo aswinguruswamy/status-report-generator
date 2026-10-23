@@ -180,7 +180,7 @@ def test_status_must_be_in_the_first_sentence():
 
 def test_soft_words_about_the_project_are_removed_when_not_green():
     soft = dict(GOOD, summary="The project is Red. The project is on track overall." + TWO[:18])
-    with pytest.raises(AIError, match="softens"):
+    with pytest.raises(AIError, match="on track"):
         check_answer(json.dumps(soft), week())
 
 
@@ -200,3 +200,28 @@ def test_green_week_can_say_on_track():
     from status_report.ai import _check_status
 
     _check_status("The project is Green. The project is on track. Six tickets closed.", "Green")
+
+
+# --- Soft words anywhere in a week that is not Green (SRG-38, D44) ----------------------
+
+def test_soft_words_in_any_sentence_are_removed():
+    # The evaluation run found this: "on track" in a sentence without "project".
+    soft = dict(GOOD, summary="The project is Red. SRG-1 is blocked. Other work is on track.")
+    with pytest.raises(AIError, match="D44"):
+        check_answer(json.dumps(soft), week())
+
+
+def test_soft_words_in_next_week_are_removed():
+    with pytest.raises(AIError, match="D44"):
+        check_answer(json.dumps(dict(GOOD, next_week=["Keep the release on track."])), week())
+
+
+@pytest.mark.parametrize("word", ["healthy", "no risks", "no concerns", "no issues", "all good"])
+def test_each_soft_word_is_removed(word):
+    soft = dict(GOOD, summary=f"The project is Red. SRG-1 is blocked. The rest has {word}.")
+    with pytest.raises(AIError, match="D44"):
+        check_answer(json.dumps(soft), week())
+
+
+def test_prompt_forbids_soft_words_when_not_green():
+    assert '"on track"' in SYSTEM_PROMPT and "not Green" in SYSTEM_PROMPT

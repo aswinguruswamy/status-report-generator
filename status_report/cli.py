@@ -108,7 +108,8 @@ def main(argv: list[str] | None = None, client: TicketSource | None = None, toda
 
         print("3/3 Writing the report...")
         paths = write_report(
-            week_tickets, metrics, status, project, folder, formats, summary=summary, warnings=warnings
+            week_tickets, metrics, status, project, folder, formats,
+            summary=summary, warnings=warnings, generated=today,
         )
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

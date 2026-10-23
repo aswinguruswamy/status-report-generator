@@ -39,6 +39,8 @@ Rules:
    example a blocked, overdue, or at-risk ticket.
 7. Start the summary with: "The project is <status>." Do not use "not", "no longer",
    or other words that change the status word.
+8. If the status is not Green, do not use "on track", "healthy", "no risks",
+   "no concerns", "no issues", or "all good" anywhere, also not in "Next week".
 
 Answer with JSON only, in this form:
 {"summary": "<3 to 5 sentences>", "next_week": ["<item>", "..."]}"""
@@ -122,8 +124,8 @@ SOFT = re.compile(
 )
 
 
-def _check_status(text: str, status: str) -> None:
-    """D02, D41: the summary states the rule status and does not change it (SRG-34)."""
+def _check_status(text: str, status: str, next_week: tuple[str, ...] = ()) -> None:
+    """D02, D41, D44: the summary states the rule status and does not change it."""
     rule = AIError("The AI summary does not state the project status from the rules (D02).")
     sentences = _split(text)
     if not sentences or not re.search(rf"\b{status}\b", sentences[0], re.IGNORECASE):
@@ -136,10 +138,12 @@ def _check_status(text: str, status: str) -> None:
                 f"The AI summary says the project is {claim.group(1)}, "
                 f"but the rules say {status} (D02, D41)."
             )
-    if status != "Green":
-        for sentence in sentences:
-            if re.search(r"\bproject\b", sentence, re.IGNORECASE) and SOFT.search(sentence):
-                raise AIError(f"The AI summary softens the project status {status} (D02, D41).")
+    # D44 (SRG-38): soft words are not allowed anywhere in a week that is not Green.
+    soft = SOFT.search(" ".join((text, *next_week)))
+    if status != "Green" and soft:
+        raise AIError(
+            f"The AI summary says \"{soft.group(0)}\", but the project is {status} (D02, D44)."
+        )
 
 
 def check_answer(raw: str, ai_input: dict) -> Summary:
@@ -164,7 +168,7 @@ def check_answer(raw: str, ai_input: dict) -> Summary:
     if unknown:
         raise AIError(f"The AI summary names tickets that are not in the input: {', '.join(sorted(unknown))}.")
 
-    _check_status(text, ai_input["project_status"])
+    _check_status(text, ai_input["project_status"], next_week)
     return Summary(text=text, next_week=next_week)
 
 
