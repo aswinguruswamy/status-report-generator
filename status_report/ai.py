@@ -37,6 +37,8 @@ Rules:
 5. Write 3 to 5 short sentences in plain, neutral English.
 6. Then give 1 to 5 short "Next week" items. Each item comes from the facts, for
    example a blocked, overdue, or at-risk ticket.
+7. Start the summary with: "The project is <status>." Do not use "not", "no longer",
+   or other words that change the status word.
 
 Answer with JSON only, in this form:
 {"summary": "<3 to 5 sentences>", "next_week": ["<item>", "..."]}"""
@@ -97,8 +99,47 @@ def estimate_tokens(ai_input: dict) -> int:
 
 # --- Check the answer ------------------------------------------------------------------
 
+def _split(text: str) -> list[str]:
+    return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+
+
 def _sentences(text: str) -> int:
-    return len([s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s])
+    return len(_split(text))
+
+
+# Words before the status word that change its meaning, for example "not Red" (SRG-34).
+NEGATION = r"(?:not|never|no\s+longer|isn't|wasn't|aren't|instead\s+of|rather\s+than|than|from|out\s+of)"
+# "The project is Green", "project status remains Amber", "the project moved to Red".
+PROJECT_CLAIM = re.compile(
+    r"\bproject(?:'s)?(?:\s+status)?\s+(?:is|was|stays|remains|looks|becomes|became|moved\s+to|"
+    r"moves\s+to|is\s+now|should\s+be|could\s+be|would\s+be)\s+(?:\w+\s+){0,2}?"
+    r"(black|red|amber|green)\b",
+    re.IGNORECASE,
+)
+SOFT = re.compile(
+    r"\b(?:on\s+track|healthy|no\s+risks?|no\s+concerns?|no\s+issues|all\s+good)\b",
+    re.IGNORECASE,
+)
+
+
+def _check_status(text: str, status: str) -> None:
+    """D02, D41: the summary states the rule status and does not change it (SRG-34)."""
+    rule = AIError("The AI summary does not state the project status from the rules (D02).")
+    sentences = _split(text)
+    if not sentences or not re.search(rf"\b{status}\b", sentences[0], re.IGNORECASE):
+        raise rule  # The first sentence must give the status
+    if re.search(rf"\b{NEGATION}\s+(?:\w+\s+){{0,2}}?{status}\b", text, re.IGNORECASE):
+        raise AIError(f"The AI summary negates the project status {status} (D02, D41).")
+    for claim in PROJECT_CLAIM.finditer(text):
+        if claim.group(1).lower() != status.lower():
+            raise AIError(
+                f"The AI summary says the project is {claim.group(1)}, "
+                f"but the rules say {status} (D02, D41)."
+            )
+    if status != "Green":
+        for sentence in sentences:
+            if re.search(r"\bproject\b", sentence, re.IGNORECASE) and SOFT.search(sentence):
+                raise AIError(f"The AI summary softens the project status {status} (D02, D41).")
 
 
 def check_answer(raw: str, ai_input: dict) -> Summary:
@@ -123,8 +164,7 @@ def check_answer(raw: str, ai_input: dict) -> Summary:
     if unknown:
         raise AIError(f"The AI summary names tickets that are not in the input: {', '.join(sorted(unknown))}.")
 
-    if not re.search(rf"\b{ai_input['project_status']}\b", text, re.IGNORECASE):
-        raise AIError("The AI summary does not state the project status from the rules (D02).")
+    _check_status(text, ai_input["project_status"])
     return Summary(text=text, next_week=next_week)
 
 

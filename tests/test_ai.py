@@ -146,3 +146,57 @@ def test_token_limit_stops_the_call():
     with pytest.raises(AIError, match="max_tokens_per_run"):
         summarize(week(), replace(CONFIG, max_tokens_per_run=100), client)
     assert client.calls == []
+
+
+# --- The summary cannot negate or change the status (SRG-34, D41) ----------------------
+
+TWO = " SRG-1 is blocked. One ticket was closed this week."
+
+
+@pytest.mark.parametrize(
+    "first",
+    [
+        "The project is not Red.",
+        "The project is no longer Red.",
+        "The project isn't Red.",
+        "The project is Green, not Red.",
+        "The project is Red rather than Amber, but it is out of Red soon.",
+        "The project moved from Red to Amber.",
+        "The project is Red, but the project is Green overall.",
+        "The project status is Amber, not Red.",
+    ],
+)
+def test_summary_that_negates_or_changes_the_status_is_removed(first):
+    bad = dict(GOOD, summary=first + TWO)
+    with pytest.raises(AIError, match="D02"):
+        check_answer(json.dumps(bad), week())
+
+
+def test_status_must_be_in_the_first_sentence():
+    late = dict(GOOD, summary="Work continued this week. SRG-1 is blocked. The project is Red.")
+    with pytest.raises(AIError, match="D02"):
+        check_answer(json.dumps(late), week())
+
+
+def test_soft_words_about_the_project_are_removed_when_not_green():
+    soft = dict(GOOD, summary="The project is Red. The project is on track overall." + TWO[:18])
+    with pytest.raises(AIError, match="softens"):
+        check_answer(json.dumps(soft), week())
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The project is Red. SRG-1 is Red because it is blocked. One ticket was closed.",
+        "The project is Red. The project status stays Red until SRG-1 is free. One was closed.",
+        "Project status: Red. SRG-1 has the P1 priority and is blocked. One ticket was closed.",
+    ],
+)
+def test_correct_summaries_still_pass(text):
+    assert check_answer(json.dumps(dict(GOOD, summary=text)), week()).text == text
+
+
+def test_green_week_can_say_on_track():
+    from status_report.ai import _check_status
+
+    _check_status("The project is Green. The project is on track. Six tickets closed.", "Green")

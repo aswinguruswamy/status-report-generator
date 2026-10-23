@@ -81,6 +81,8 @@
  "must_not_contain": [
   "is Green",
   "is Amber",
-  "on track"
+  "on track",
+  "not Red",
+  "no longer Red"
  ]
 }
