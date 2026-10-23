@@ -33,9 +33,14 @@ GOOD = {
 
 
 class FakeClient:
-    def __init__(self, answer=GOOD, error=None):
+    """A fake Claude API. A dict answer comes back as a tool call, like the real API (SRG-40).
+    A text answer, or as_text=True, comes back as text (the fallback)."""
+
+    def __init__(self, answer=GOOD, error=None, as_text=False, stop_reason=None):
         self.answer = answer
         self.error = error
+        self.as_text = as_text
+        self.stop_reason = stop_reason
         self.calls = []
         self.messages = self
 
@@ -43,9 +48,13 @@ class FakeClient:
         self.calls.append(kwargs)
         if self.error:
             raise self.error
+        usage = SimpleNamespace(input_tokens=900, output_tokens=120)
+        if isinstance(self.answer, dict) and not self.as_text:
+            block = SimpleNamespace(type="tool_use", name="write_summary", input=self.answer)
+            return SimpleNamespace(content=[block], usage=usage, stop_reason=self.stop_reason or "tool_use")
         text = self.answer if isinstance(self.answer, str) else json.dumps(self.answer)
-        return SimpleNamespace(content=[SimpleNamespace(text=text)],
-                               usage=SimpleNamespace(input_tokens=900, output_tokens=120))
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], usage=usage,
+                               stop_reason=self.stop_reason or "end_turn")
 
 
 def week(config=CONFIG):
@@ -225,3 +234,50 @@ def test_each_soft_word_is_removed(word):
 
 def test_prompt_forbids_soft_words_when_not_green():
     assert '"on track"' in SYSTEM_PROMPT and "not Green" in SYSTEM_PROMPT
+
+
+# --- Answer through the tool schema (SRG-40, D49) -----------------------------------------
+
+def test_the_call_asks_for_the_write_summary_tool():
+    client = FakeClient()
+    summarize(week(), CONFIG, client)
+    call = client.calls[0]
+    assert call["tools"][0]["name"] == "write_summary"
+    assert call["tool_choice"] == {"type": "tool", "name": "write_summary"}
+    assert set(call["tools"][0]["input_schema"]["required"]) == {"summary", "next_week"}
+
+
+def test_tool_answer_with_quotes_braces_and_line_breaks_passes():
+    # The real run broke on a title with quotes. A tool answer is already parsed.
+    answer = {"summary": 'The project is Red. SRG-1 "Secret {project}" is blocked.\nOne closed.',
+              "next_week": ['Free SRG-1 ("Secret {project}").']}
+    summary = summarize(week(), CONFIG, FakeClient(answer))
+    assert '"Secret {project}"' in summary.text
+
+
+def test_text_fallback_still_works():
+    assert summarize(week(), CONFIG, FakeClient(GOOD, as_text=True)).text == GOOD["summary"]
+
+
+def test_broken_json_states_the_reason():
+    broken = '{"summary": "The project is Red. SRG-1 "Secret" is blocked. One closed.", "next_week": []}'
+    with pytest.raises(AIError, match=r"agreed form: JSON error .* at character \d+"):
+        summarize(week(), CONFIG, FakeClient(broken))
+
+
+@pytest.mark.parametrize(
+    ("answer", "reason"),
+    [
+        ("Here is the summary.", "has no JSON object"),
+        ({"summary": "The project is Red."}, "the field next_week is missing"),
+        ({"summary": 3, "next_week": []}, "must be text"),
+    ],
+)
+def test_each_form_error_states_its_reason(answer, reason):
+    with pytest.raises(AIError, match=reason):
+        summarize(week(), CONFIG, FakeClient(answer))
+
+
+def test_answer_cut_at_the_output_limit_states_the_reason():
+    with pytest.raises(AIError, match="stopped at the output limit"):
+        summarize(week(), CONFIG, FakeClient(GOOD, stop_reason="max_tokens"))

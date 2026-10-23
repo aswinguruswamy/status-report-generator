@@ -158,7 +158,8 @@ python scripts/make_sample.py           # make the sample report again after a l
 - **AI guardrail tests** try to trick each answer check: a key that is not in the input, a
   changed or negated status, soft words in a Red week.
 - **AI evaluation set** (`eval/samples/`) checks the quality of the real AI summary: a red, an
-  amber, a green, an empty week, and a week with hidden titles. Run it after each change to the
+  amber, a green, an empty week, a week with hidden titles, and a week with quotes and braces in
+  the titles. Run it after each change to the
   prompt or the model. It shows the AI text for each failed sample.
 - **CI** (GitHub Actions) runs the secret scan, the style check, and all tests on Python 3.11,
   3.12, and 3.13 for each pull request.

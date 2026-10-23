@@ -23,12 +23,16 @@ GOOD_ANSWERS = {
                      "No ticket was opened or closed."), ["Plan the work for the next week."]),
     "5-hidden-titles": (("The project is Red. FIN-3 has the P1 priority and is overdue. "
                         "FIN-8 is blocked for 2 days."), ["Finish FIN-3.", "Remove the blocker on FIN-8."]),
+    "6-quoted-titles": (('The project is Red. QA-7 "Login fails when the name has a {quote}" '
+                        "is blocked for 3 days. The team closed 2 tickets."),
+                       ["Remove the blocker on QA-7."]),
 }
 
 
-def test_set_has_the_five_required_weeks():
+def test_set_has_the_required_weeks():
     names = [s["name"] for s in SAMPLES]
-    assert names == ["1-red-week", "2-amber-week", "3-green-week", "4-empty-week", "5-hidden-titles"]
+    assert names == ["1-red-week", "2-amber-week", "3-green-week", "4-empty-week", "5-hidden-titles",
+                     "6-quoted-titles"]  # SRG-40: titles with quotes, braces, and a line break
     for s in SAMPLES:
         assert s["must_contain"] and s["must_not_contain"], s["name"]
 
