@@ -99,6 +99,8 @@
   "is Amber",
   "blocked by",
   "delayed",
-  "risk of"
+  "risk of",
+  "not Green",
+  "no longer Green"
  ]
 }

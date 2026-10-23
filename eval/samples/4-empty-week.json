@@ -65,6 +65,8 @@
   "were completed",
   "were delivered",
   "is Red",
-  "is Amber"
+  "is Amber",
+  "not Green",
+  "no longer Green"
  ]
 }

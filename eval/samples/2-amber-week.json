@@ -83,6 +83,8 @@
  ],
  "must_not_contain": [
   "is Red",
-  "is Green"
+  "is Green",
+  "not Amber",
+  "no longer Amber"
  ]
 }
