@@ -10,6 +10,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
+from status_report.ai import Summary
 from status_report.metrics import WeekMetrics
 from status_report.models import Ticket
 from status_report.project import LEVELS, ProjectStatus
@@ -24,6 +25,7 @@ NUMBER_LABELS = {
     "overdue": "Overdue",
 }
 SECTIONS = ("Project status", "Weekly numbers", "Priority matrix", "Tickets")
+AI_NOTE = "Written by AI from the facts in this report. The rules set the status, not the AI (D02)."
 
 
 def _ticket_rows(tickets: list[Ticket], status: ProjectStatus) -> list[tuple[str, ...]]:
@@ -64,8 +66,14 @@ def _md_table(columns, rows) -> list[str]:
 
 
 def to_markdown(
-    tickets: list[Ticket], metrics: WeekMetrics, status: ProjectStatus, project: str
+    tickets: list[Ticket],
+    metrics: WeekMetrics,
+    status: ProjectStatus,
+    project: str,
+    summary: Summary | None = None,
+    warnings: list[str] | None = None,
 ) -> str:
+    warnings = status.warnings if warnings is None else warnings
     lines = [
         f"# Weekly Status Report: {project}",
         "",
@@ -75,6 +83,21 @@ def to_markdown(
         "",
         f"**{status.status.upper()}** – {status.reason}",
         "",
+    ]
+    if summary is not None:
+        lines += [
+            "## Executive summary",
+            "",
+            summary.text,
+            "",
+            "**Next week**",
+            "",
+            *(f"- {item}" for item in summary.next_week),
+            "",
+            f"_{AI_NOTE}_",
+            "",
+        ]
+    lines += [
         "## Weekly numbers",
         "",
         *_md_table(("Number", "Value"), _number_rows(metrics)),
@@ -85,8 +108,8 @@ def to_markdown(
     ]
     if metrics.days_blocked:
         lines += ["", "## Blocked tickets", "", *_md_table(("Key", "Days blocked"), _blocked_rows(metrics))]
-    if status.warnings:
-        lines += ["", "## Warnings", "", *(f"- {w}" for w in status.warnings)]
+    if warnings:
+        lines += ["", "## Warnings", "", *(f"- {w}" for w in warnings)]
     lines += ["", "## Tickets", "", *_md_table(COLUMNS, _ticket_rows(tickets, status))]
     return "\n".join(lines) + "\n"
 
@@ -103,8 +126,14 @@ def _html_table(columns, rows) -> str:
 
 
 def to_html(
-    tickets: list[Ticket], metrics: WeekMetrics, status: ProjectStatus, project: str
+    tickets: list[Ticket],
+    metrics: WeekMetrics,
+    status: ProjectStatus,
+    project: str,
+    summary: Summary | None = None,
+    warnings: list[str] | None = None,
 ) -> str:
+    warnings = status.warnings if warnings is None else warnings
     title = html.escape(f"Weekly Status Report: {project}")
     parts = [
         "<!doctype html>\n<html><head><meta charset='utf-8'>",
@@ -112,6 +141,16 @@ def to_html(
         f"<h1>{title}</h1><p>Week: {metrics.start} to {metrics.end}</p>",
         "<h2>Project status</h2>",
         f"<p><strong>{html.escape(status.status.upper())}</strong> – {html.escape(status.reason)}</p>",
+    ]
+    if summary is not None:
+        items = "".join(f"<li>{html.escape(i)}</li>" for i in summary.next_week)
+        parts += [
+            "<h2>Executive summary</h2>",
+            f"<p>{html.escape(summary.text)}</p>",
+            f"<p><strong>Next week</strong></p><ul>{items}</ul>",
+            f"<p><em>{html.escape(AI_NOTE)}</em></p>",
+        ]
+    parts += [
         "<h2>Weekly numbers</h2>",
         _html_table(("Number", "Value"), _number_rows(metrics)),
         "<h2>Priority matrix</h2>",
@@ -119,8 +158,8 @@ def to_html(
     ]
     if metrics.days_blocked:
         parts += ["<h2>Blocked tickets</h2>", _html_table(("Key", "Days blocked"), _blocked_rows(metrics))]
-    if status.warnings:
-        items = "".join(f"<li>{html.escape(w)}</li>" for w in status.warnings)
+    if warnings:
+        items = "".join(f"<li>{html.escape(w)}</li>" for w in warnings)
         parts += ["<h2>Warnings</h2>", f"<ul>{items}</ul>"]
     parts += ["<h2>Tickets</h2>", _html_table(COLUMNS, _ticket_rows(tickets, status)), "</body></html>\n"]
     return "".join(parts)
@@ -133,16 +172,18 @@ def write_report(
     project: str,
     folder: Path,
     formats: tuple[str, ...],
+    summary: Summary | None = None,
+    warnings: list[str] | None = None,
 ) -> list[Path]:
     folder.mkdir(parents=True, exist_ok=True)
     base = folder / f"status-report-{project}-{metrics.start}"
     paths = []
     if "markdown" in formats:
         path = base.with_suffix(".md")
-        path.write_text(to_markdown(tickets, metrics, status, project), encoding="utf-8")
+        path.write_text(to_markdown(tickets, metrics, status, project, summary, warnings), encoding="utf-8")
         paths.append(path)
     if "html" in formats:
         path = base.with_suffix(".html")
-        path.write_text(to_html(tickets, metrics, status, project), encoding="utf-8")
+        path.write_text(to_html(tickets, metrics, status, project, summary, warnings), encoding="utf-8")
         paths.append(path)
     return paths

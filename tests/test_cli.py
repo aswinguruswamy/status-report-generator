@@ -166,3 +166,33 @@ def test_report_shows_project_status_matrix_and_ticket_status(tmp_path, capsys):
     assert "| SRG-1 | Read tickets \\| Jira | Story | Amber | To Do | High | 2026-10-24 |" in text
     page = (tmp_path / "status-report-SRG-2026-10-19.html").read_text()
     assert "<h2>Priority matrix</h2>" in page and "<strong>AMBER</strong>" in page
+
+
+def test_report_has_the_ai_summary_when_the_ai_answers(tmp_path, capsys):
+    from test_ai import FakeClient as FakeAI
+
+    answer = {
+        "summary": "The project is Amber. SRG-1 is due soon and not started. No ticket was closed.",
+        "next_week": ["Start SRG-1."],
+    }
+    fake = FakeAI(answer)
+    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--week", "2026-10-19", "--format", "md"]
+    assert main(argv, client=FakeClient([ticket()]), today=date(2026, 10, 22), ai_client=fake) == EXIT_OK
+    text = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
+    assert "## Executive summary" in text
+    assert "The project is Amber." in text and "- Start SRG-1." in text
+    assert "The rules set the status, not the AI" in text
+    assert "AI summary: done (900 + 120 tokens)" in capsys.readouterr().out
+
+
+def test_ai_answer_with_unknown_key_is_removed_with_a_warning(tmp_path):
+    from test_ai import FakeClient as FakeAI
+
+    answer = {"summary": "The project is Amber. SRG-77 is late. One more point.",
+              "next_week": ["Fix SRG-77."]}
+    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--week", "2026-10-19", "--format", "md"]
+    main(argv, client=FakeClient([ticket()]), today=date(2026, 10, 22), ai_client=FakeAI(answer))
+    text = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
+    assert "## Executive summary" not in text
+    assert "No AI summary in this report. The AI summary names tickets that are not in the input: SRG-77." in text
+

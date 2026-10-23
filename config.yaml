@@ -46,7 +46,7 @@ project_status:
 ai:
   enabled: true
   model: claude-sonnet-5-5         # Model name. Change it here, not in the code.
-  max_tokens_per_run: 2000         # Cost limit for each run
+  max_tokens_per_run: 8000         # Cost limit for each run (input + output tokens)
   hide_titles_from_ai: false       # true: send ticket keys only, no titles
 
 output:
