@@ -15,6 +15,7 @@ PRIORITY_LEVELS = ("P1", "P2", "P3", "P4", "P5")
 UNMAPPED = "Unmapped"
 BLOCKED_METHODS = {"status", "flag", "label"}
 OUTPUT_FORMATS = {"markdown", "html"}
+AMBER_CATEGORIES = {"To Do", "In Progress"}
 
 
 class ConfigError(Exception):
@@ -31,7 +32,7 @@ class Config:
     blocked_status_name: str | None
     blocked_label: str | None
     amber_window_days: int
-    amber_only_status: str
+    amber_status_category: str  # Status category for amber (D22), not a status name
     high_priorities: tuple[str, ...]
     ai_enabled: bool
     ai_model: str
@@ -211,6 +212,15 @@ class _Checker:
                 )
         return formats
 
+    def amber_category(self) -> str:
+        value = self.text("ticket_status", "amber_status_category")
+        if value not in AMBER_CATEGORIES:
+            raise self.fail(
+                ("ticket_status", "amber_status_category"),
+                f"'{value}' is not valid. Use 'To Do' or 'In Progress' (a status category).",
+            )
+        return value
+
     def build(self) -> Config:
         methods, status_name, label = self.blocked()
         return Config(
@@ -222,7 +232,7 @@ class _Checker:
             blocked_status_name=status_name,
             blocked_label=label,
             amber_window_days=self.integer("ticket_status", "amber_window_days", minimum=0),
-            amber_only_status=self.text("ticket_status", "amber_only_status"),
+            amber_status_category=self.amber_category(),
             high_priorities=self.high_priorities(),
             ai_enabled=self.boolean("ai", "enabled"),
             ai_model=self.text("ai", "model"),
