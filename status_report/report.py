@@ -58,10 +58,24 @@ def _number_rows(metrics: WeekMetrics) -> list[tuple[str, str]]:
 
 # --- Markdown -------------------------------------------------------------------
 
+def _md_text(value: object) -> str:
+    """Text from Jira or the AI, safe for one Markdown line (SRG-35).
+
+    "<", ">", and "&" become HTML entities, so raw HTML shows as text.
+    Line breaks become spaces, so a table row stays on one line.
+    """
+    text = html.escape(str(value), quote=False)
+    return " ".join(text.splitlines()) if text else text
+
+
+def _md_cell(value: object) -> str:
+    return _md_text(value).replace("|", "\\|")
+
+
 def _md_table(columns, rows) -> list[str]:
     lines = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
     for row in rows:
-        lines.append("| " + " | ".join(str(c).replace("|", "\\|") for c in row) + " |")
+        lines.append("| " + " | ".join(_md_cell(c) for c in row) + " |")
     return lines
 
 
@@ -75,24 +89,24 @@ def to_markdown(
 ) -> str:
     warnings = status.warnings if warnings is None else warnings
     lines = [
-        f"# Weekly Status Report: {project}",
+        f"# Weekly Status Report: {_md_text(project)}",
         "",
         f"Week: {metrics.start} to {metrics.end}",
         "",
         "## Project status",
         "",
-        f"**{status.status.upper()}** – {status.reason}",
+        f"**{status.status.upper()}** – {_md_text(status.reason)}",
         "",
     ]
     if summary is not None:
         lines += [
             "## Executive summary",
             "",
-            summary.text,
+            _md_text(summary.text),
             "",
             "**Next week**",
             "",
-            *(f"- {item}" for item in summary.next_week),
+            *(f"- {_md_text(item)}" for item in summary.next_week),
             "",
             f"_{AI_NOTE}_",
             "",
@@ -109,7 +123,7 @@ def to_markdown(
     if metrics.days_blocked:
         lines += ["", "## Blocked tickets", "", *_md_table(("Key", "Days blocked"), _blocked_rows(metrics))]
     if warnings:
-        lines += ["", "## Warnings", "", *(f"- {w}" for w in warnings)]
+        lines += ["", "## Warnings", "", *(f"- {_md_text(w)}" for w in warnings)]
     lines += ["", "## Tickets", "", *_md_table(COLUMNS, _ticket_rows(tickets, status))]
     return "\n".join(lines) + "\n"
 
