@@ -26,6 +26,8 @@ class WeekMetrics:
     blocked: tuple[str, ...]
     overdue: tuple[str, ...]
     days_blocked: dict[str, int | None] = field(default_factory=dict)
+    as_of: datetime | None = None  # The moment the numbers describe
+    today: date | None = None  # First day that is not yet past (for overdue and amber)
 
     def counts(self) -> dict[str, int]:
         return {
@@ -155,4 +157,6 @@ def calculate(
         blocked=tuple(blocked),
         overdue=tuple(overdue),
         days_blocked=blocked_days,
+        as_of=moment,
+        today=last_day,
     )

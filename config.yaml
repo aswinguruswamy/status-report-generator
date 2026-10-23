@@ -34,8 +34,9 @@ blocked_label: blocked
 
 # Ticket status rules (D21, D22).
 ticket_status:
-  amber_window_days: 2             # Amber: due in this many days and still in To Do
-  amber_only_status: To Do
+  amber_window_days: 2             # Amber: due within this many days...
+  amber_status_category: To Do     # ...and still in this status category (D22).
+                                   # A category works for each team's status names.
 
 # Project status rules (D21).
 project_status:

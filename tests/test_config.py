@@ -167,3 +167,10 @@ def test_wrong_output_format(tmp_path):
     path = repo_config_with(tmp_path, "formats: [markdown, html]", "formats: [markdown, pdf]")
     with pytest.raises(ConfigError, match="'pdf' is not valid"):
         load_config(path)
+
+
+def test_amber_status_category_must_be_a_category(tmp_path):
+    # C2 from the Sprint 1 review: a status name such as "Backlog" is not allowed.
+    path = repo_config_with(tmp_path, "amber_status_category: To Do", "amber_status_category: Backlog")
+    with pytest.raises(ConfigError, match="'Backlog' is not valid. Use 'To Do' or 'In Progress'"):
+        load_config(path)
