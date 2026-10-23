@@ -34,6 +34,7 @@ class Ticket:
     labels: tuple[str, ...] = ()
     flagged: bool = False
     history: tuple[StatusChange, ...] = field(default=())
+    story_points: float | None = None  # Used by the simulated teams (D20)
 
     @property
     def is_done(self) -> bool:
