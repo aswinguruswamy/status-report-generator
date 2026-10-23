@@ -41,8 +41,7 @@ status-report --help                   # all options
 
 ## Project documents
 
-The plan, decisions, and rules are in the Confluence space:
-https://aswinguruswamy-1790217687632.atlassian.net/wiki/spaces/SRG/overview
+Project documents: see `docs/` (added at v1.0.0). They are copies of the project's Confluence pages: charter, decisions, RAID log, status rules, and AI guardrails.
 
 ## License
 

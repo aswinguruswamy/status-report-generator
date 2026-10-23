@@ -107,6 +107,12 @@ def days_blocked(ticket: Ticket, config: Config, moment: datetime) -> int | None
     return max(0, (moment - since).days)
 
 
+def tickets_in_week(tickets: list[Ticket], metrics: WeekMetrics) -> list[Ticket]:
+    """The tickets that the report shows: opened, closed, or open in the week."""
+    keys = set(metrics.opened) | set(metrics.closed) | set(metrics.open)
+    return [t for t in tickets if t.key in keys]
+
+
 def calculate(
     tickets: list[Ticket], config: Config, start: date, end: date, now: datetime | None = None
 ) -> WeekMetrics:

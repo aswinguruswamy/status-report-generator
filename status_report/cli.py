@@ -12,9 +12,10 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from status_report.config import ConfigError, load_config
-from status_report.jira_client import JiraClient, JiraError
-from status_report.metrics import calculate
+from status_report.jira_client import JiraError
+from status_report.metrics import calculate, tickets_in_week
 from status_report.report import write_report
+from status_report.sources import TicketSource, default_source
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -55,7 +56,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None, client: JiraClient | None = None, today: date | None = None) -> int:
+def main(argv: list[str] | None = None, client: TicketSource | None = None, today: date | None = None) -> int:
     args = parse_args(argv)
     try:
         config = load_config(args.config)
@@ -72,7 +73,7 @@ def main(argv: list[str] | None = None, client: JiraClient | None = None, today:
 
         print(f"Project {project}, week {start} to {end}")
         print("1/3 Connecting to Jira...")
-        client = client or JiraClient.from_env()
+        client = client or default_source()
         client.connect()
 
         print("2/3 Reading tickets...")
@@ -88,7 +89,7 @@ def main(argv: list[str] | None = None, client: JiraClient | None = None, today:
         print(f"    AI summary: {'on' if use_ai else 'off'}")
 
         print("3/3 Writing the report...")
-        paths = write_report(tickets, metrics, project, folder, formats)
+        paths = write_report(tickets_in_week(tickets, metrics), metrics, project, folder, formats)
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return EXIT_ERROR
