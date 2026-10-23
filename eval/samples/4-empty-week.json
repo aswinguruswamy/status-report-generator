@@ -1,0 +1,70 @@
+{
+ "name": "4-empty-week",
+ "about": "No tickets at all. The summary must say so and must not invent work or progress.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Green",
+  "reason": "Green: No open tickets.",
+  "numbers": {
+   "closed": 0,
+   "opened": 0,
+   "open": 0,
+   "blocked": 0,
+   "overdue": 0
+  },
+  "matrix": {
+   "Black": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": []
+ },
+ "must_contain": [
+  "Green"
+ ],
+ "must_contain_one_of": [
+  [
+   "no open tickets",
+   "no open work",
+   "no tickets",
+   "no work items",
+   "zero"
+  ]
+ ],
+ "must_not_contain": [
+  "progress was made",
+  "were completed",
+  "were delivered",
+  "is Red",
+  "is Amber"
+ ]
+}

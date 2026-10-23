@@ -1,0 +1,79 @@
+{
+ "name": "5-hidden-titles",
+ "about": "hide_titles_from_ai is true, so the input has keys only. The summary must use keys and invent no title.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Red",
+  "reason": "Red: 1 P1 ticket is overdue (FIN-3); 1 P2 ticket is blocked (FIN-8).",
+  "numbers": {
+   "closed": 1,
+   "opened": 2,
+   "open": 5,
+   "blocked": 1,
+   "overdue": 1
+  },
+  "matrix": {
+   "Black": {
+    "P1": 1,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 0,
+    "P2": 1,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 3,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": [
+   {
+    "key": "FIN-3",
+    "priority": "P1",
+    "status": "Black"
+   },
+   {
+    "key": "FIN-8",
+    "priority": "P2",
+    "status": "Red",
+    "days_blocked": 2
+   },
+   {
+    "key": "FIN-1",
+    "priority": "P3",
+    "status": "Done this week"
+   }
+  ]
+ },
+ "must_contain": [
+  "Red",
+  "FIN-3",
+  "FIN-8"
+ ],
+ "must_not_contain": [
+  "is Green",
+  "is Amber",
+  "titled",
+  "called"
+ ]
+}

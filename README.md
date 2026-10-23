@@ -35,6 +35,17 @@ status-report --help                   # all options
 
 **Caution:** Never commit the `.env` file. It contains your secrets.
 
+## Tests
+
+```
+pytest                                  # all tests, no API calls (about 3 seconds)
+python -m status_report.evaluation      # AI evaluation set: 5 real Claude API calls
+```
+
+- **Unit and scenario tests** check each status rule with a known result.
+- **Random tests** make 300 difficult weeks with a fixed seed and check that the tool survives. A failing week is saved in `tests/regressions/` as a permanent test.
+- **AI evaluation set** (`eval/samples/`) checks the quality of the AI summary: a red, an amber, a green, an empty week, and a week with hidden titles. Each sample lists facts that the summary must and must not contain. Run it after each change to the prompt or the model. It asks before it makes the calls.
+
 ## Limits
 
 - Tested on Jira Cloud team-managed projects only.

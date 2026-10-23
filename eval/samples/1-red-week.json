@@ -1,0 +1,86 @@
+{
+ "name": "1-red-week",
+ "about": "A P1 ticket is blocked, so the rules say Red. The summary must say Red and name the ticket.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Red",
+  "reason": "Red: 1 P1 ticket is blocked (WEB-12).",
+  "numbers": {
+   "closed": 3,
+   "opened": 2,
+   "open": 9,
+   "blocked": 1,
+   "overdue": 0
+  },
+  "matrix": {
+   "Black": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 1,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 0,
+    "P2": 3,
+    "P3": 5,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": [
+   {
+    "key": "WEB-12",
+    "priority": "P1",
+    "status": "Red",
+    "days_blocked": 4,
+    "title": "Payment page fails on mobile"
+   },
+   {
+    "key": "WEB-7",
+    "priority": "P2",
+    "status": "Done this week",
+    "title": "Login timeout"
+   },
+   {
+    "key": "WEB-8",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Footer links"
+   },
+   {
+    "key": "WEB-9",
+    "priority": "P4",
+    "status": "Done this week",
+    "title": "Typo in help page"
+   }
+  ]
+ },
+ "must_contain": [
+  "Red",
+  "WEB-12"
+ ],
+ "must_not_contain": [
+  "is Green",
+  "is Amber",
+  "on track"
+ ]
+}

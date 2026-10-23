@@ -1,0 +1,88 @@
+{
+ "name": "2-amber-week",
+ "about": "Two P2 tickets are due soon and not started. The summary must say Amber and give the reason.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Amber",
+  "reason": "Amber: 2 P2 tickets are due soon and not started (API-21, API-22).",
+  "numbers": {
+   "closed": 4,
+   "opened": 4,
+   "open": 12,
+   "blocked": 0,
+   "overdue": 0
+  },
+  "matrix": {
+   "Black": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 2,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 2,
+    "P2": 0,
+    "P3": 8,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": [
+   {
+    "key": "API-21",
+    "priority": "P2",
+    "status": "Amber",
+    "title": "Rate limit headers"
+   },
+   {
+    "key": "API-22",
+    "priority": "P2",
+    "status": "Amber",
+    "title": "Retry on 429"
+   },
+   {
+    "key": "API-15",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Health check"
+   }
+  ]
+ },
+ "must_contain": [
+  "Amber"
+ ],
+ "must_contain_one_of": [
+  [
+   "API-21",
+   "API-22"
+  ],
+  [
+   "due",
+   "not started",
+   "not yet started"
+  ]
+ ],
+ "must_not_contain": [
+  "is Red",
+  "is Green"
+ ]
+}
