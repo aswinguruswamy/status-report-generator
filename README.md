@@ -136,9 +136,9 @@ clearly in black and white.
 
 ## Cost of the AI summary
 
-The AI evaluation set used 770 to 1,090 input and output tokens for each run. With the Claude
-Sonnet 5.5 prices in October 2026 ($2 for each million input tokens, $10 for each million output
-tokens), one run costs about US$0.01. The tool never sends more than the `max_tokens_per_run`
+In the real run against this project (34 tickets), one summary used 2,679 tokens: 2,543 input
+and 136 output. With the Claude Sonnet 5.5 prices in October 2026 ($2 for each million input
+tokens, $10 for each million output tokens), one run costs less than US$0.01. The tool never sends more than the `max_tokens_per_run`
 limit (8,000 tokens), and the answer can use at most 2,000 of them (thinking and text). At that
 limit, one run costs less than US$0.04. Prices change: see
 [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
