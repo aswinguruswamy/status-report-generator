@@ -136,11 +136,12 @@ clearly in black and white.
 
 ## Cost of the AI summary
 
-The AI evaluation set used 770 to 1,090 tokens for each run (most of them are input).
-With the Claude Sonnet 5.5 prices in October 2026 ($2 for each million input tokens, $10 for
-each million output tokens), one run costs less than US$0.01. The tool never sends more than
-the `max_tokens_per_run` limit (8,000 tokens). At that limit, one run costs less than
-US$0.03. Prices change: see [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+In the real run against this project (34 tickets), one summary used 2,679 tokens: 2,543 input
+and 136 output. With the Claude Sonnet 5.5 prices in October 2026 ($2 for each million input
+tokens, $10 for each million output tokens), one run costs less than US$0.01. The tool never sends more than the `max_tokens_per_run`
+limit (8,000 tokens), and the answer can use at most 2,000 of them (thinking and text). At that
+limit, one run costs less than US$0.04. Prices change: see
+[Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
 ## Tests
 
@@ -158,7 +159,8 @@ python scripts/make_sample.py           # make the sample report again after a l
 - **AI guardrail tests** try to trick each answer check: a key that is not in the input, a
   changed or negated status, soft words in a Red week.
 - **AI evaluation set** (`eval/samples/`) checks the quality of the real AI summary: a red, an
-  amber, a green, an empty week, and a week with hidden titles. Run it after each change to the
+  amber, a green, an empty week, a week with hidden titles, and a week with quotes and braces in
+  the titles. Run it after each change to the
   prompt or the model. It shows the AI text for each failed sample.
 - **CI** (GitHub Actions) runs the secret scan, the style check, and all tests on Python 3.11,
   3.12, and 3.13 for each pull request.

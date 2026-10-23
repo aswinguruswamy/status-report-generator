@@ -33,9 +33,12 @@ GOOD = {
 
 
 class FakeClient:
-    def __init__(self, answer=GOOD, error=None):
+    """A fake Claude API. Like structured outputs, it answers with JSON text (SRG-40)."""
+
+    def __init__(self, answer=GOOD, error=None, stop_reason="end_turn"):
         self.answer = answer
         self.error = error
+        self.stop_reason = stop_reason
         self.calls = []
         self.messages = self
 
@@ -44,8 +47,9 @@ class FakeClient:
         if self.error:
             raise self.error
         text = self.answer if isinstance(self.answer, str) else json.dumps(self.answer)
-        return SimpleNamespace(content=[SimpleNamespace(text=text)],
-                               usage=SimpleNamespace(input_tokens=900, output_tokens=120))
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)],
+                               usage=SimpleNamespace(input_tokens=900, output_tokens=120),
+                               stop_reason=self.stop_reason)
 
 
 def week(config=CONFIG):
@@ -225,3 +229,74 @@ def test_each_soft_word_is_removed(word):
 
 def test_prompt_forbids_soft_words_when_not_green():
     assert '"on track"' in SYSTEM_PROMPT and "not Green" in SYSTEM_PROMPT
+
+
+# --- Structured outputs and clear error reasons (SRG-40, D49) ----------------------------
+
+def test_the_call_asks_for_structured_output_and_no_forced_tool():
+    # Claude Sonnet 5.5 refuses a forced tool call with a 400 error (real run 2).
+    client = FakeClient()
+    summarize(week(), CONFIG, client)
+    call = client.calls[0]
+    schema = call["output_config"]["format"]["schema"]
+    assert call["output_config"]["format"]["type"] == "json_schema"
+    assert set(schema["required"]) == {"summary", "next_week"}
+    assert schema["additionalProperties"] is False
+    assert "tool_choice" not in call and "tools" not in call
+    # Thinking counts toward max_tokens: low effort, and room for thinking and the answer (D51).
+    assert call["output_config"]["effort"] == "low"
+    assert call["max_tokens"] >= 2000
+
+
+def test_schema_uses_only_supported_keywords():
+    # Structured outputs reject maxItems, minLength, maxLength, minimum, and maximum.
+    from status_report.ai import SUMMARY_SCHEMA
+
+    text = json.dumps(SUMMARY_SCHEMA)
+    for keyword in ("maxItems", "minLength", "maxLength", "minimum", "maximum", "$ref"):
+        assert keyword not in text
+
+
+def test_answer_with_quotes_braces_and_line_breaks_passes():
+    answer = {"summary": 'The project is Red. SRG-1 "Secret {project}" is blocked.\nOne closed.',
+              "next_week": ['Free SRG-1 ("Secret {project}").']}
+    summary = summarize(week(), CONFIG, FakeClient(answer))
+    assert '"Secret {project}"' in summary.text
+
+
+def test_broken_json_states_the_reason():
+    broken = '{"summary": "The project is Red. SRG-1 "Secret" is blocked. One closed.", "next_week": []}'
+    with pytest.raises(AIError, match=r"agreed form: JSON error .* at character \d+"):
+        summarize(week(), CONFIG, FakeClient(broken))
+
+
+@pytest.mark.parametrize(
+    ("answer", "reason"),
+    [
+        ("Here is the summary.", "has no JSON object"),
+        ({"summary": "The project is Red."}, "the field next_week is missing"),
+        ({"summary": 3, "next_week": []}, "must be text"),
+    ],
+)
+def test_each_form_error_states_its_reason(answer, reason):
+    with pytest.raises(AIError, match=reason):
+        summarize(week(), CONFIG, FakeClient(answer))
+
+
+@pytest.mark.parametrize(("stop", "reason"), [("max_tokens", "output limit"), ("refusal", "refused")])
+def test_stop_reasons_are_stated(stop, reason):
+    with pytest.raises(AIError, match=reason):
+        summarize(week(), CONFIG, FakeClient(GOOD, stop_reason=stop))
+
+
+def test_api_error_states_the_status_and_the_message():
+    import anthropic
+    import httpx2 as httpx
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    error = anthropic.BadRequestError(
+        "tool_choice is not supported for this model", response=httpx.Response(400, request=request),
+        body=None,
+    )
+    with pytest.raises(AIError, match=r"BadRequestError, 400: tool_choice is not supported"):
+        summarize(week(), CONFIG, FakeClient(error=error))

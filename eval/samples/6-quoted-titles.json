@@ -1,0 +1,82 @@
+{
+ "name": "6-quoted-titles",
+ "about": "Real titles with quotes, braces, and a line break (SRG-40). The answer must keep its form and say Red.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Red",
+  "reason": "Red: 1 P1 ticket is blocked (QA-7).",
+  "numbers": {
+   "closed": 2,
+   "opened": 1,
+   "open": 6,
+   "blocked": 1,
+   "overdue": 0
+  },
+  "matrix": {
+   "Black": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 1,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 5,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": [
+   {
+    "key": "QA-7",
+    "priority": "P1",
+    "status": "Red",
+    "days_blocked": 3,
+    "title": "Login fails when the name has a \"quote\" in it"
+   },
+   {
+    "key": "QA-9",
+    "priority": "P2",
+    "status": "Done this week",
+    "title": "Parse {braces} and [brackets] in the import file"
+   },
+   {
+    "key": "QA-11",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Fix the summary that says \"not Red\"\nand the second line"
+   }
+  ]
+ },
+ "must_contain": [
+  "Red",
+  "QA-7"
+ ],
+ "must_not_contain": [
+  "is Green",
+  "is Amber",
+  "on track",
+  "not Red",
+  "no longer Red"
+ ]
+}
