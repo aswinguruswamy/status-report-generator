@@ -21,7 +21,7 @@ from status_report.metrics import WeekMetrics
 from status_report.models import Ticket
 from status_report.project import ProjectStatus
 
-MAX_OUTPUT_TOKENS = 600
+MAX_OUTPUT_TOKENS = 2000  # Thinking and answer together; a summary needs about 200 (D51)
 TIMEOUT_SECONDS = 60
 CHARS_PER_TOKEN = 3  # A safe estimate: real text has about 4 characters for each token
 KEY_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")
@@ -42,8 +42,28 @@ Rules:
 8. If the status is not Green, do not use "on track", "healthy", "no risks",
    "no concerns", "no issues", or "all good" anywhere, also not in "Next week".
 
-Answer with JSON only, in this form:
-{"summary": "<3 to 5 sentences>", "next_week": ["<item>", "..."]}"""
+Answer with JSON only: "summary" has the 3 to 5 sentences, and "next_week" has
+the 1 to 5 items."""
+
+# Structured outputs: the API returns JSON that matches this schema (SRG-40, D49).
+# Free text broke when a ticket title had quotes. Claude Sonnet 5.5 refuses a forced
+# tool call (400), so the schema goes in output_config, not in a tool.
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string", "description": "3 to 5 short sentences."},
+        "next_week": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "1 to 5 short items.",
+        },
+    },
+    "required": ["summary", "next_week"],
+    "additionalProperties": False,
+}
+# Sonnet 5.5 thinks before it answers, and thinking counts toward max_tokens. A summary of
+# facts needs little thinking, so the effort is low (D51, real run 3).
+OUTPUT_CONFIG = {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}, "effort": "low"}
 
 
 class AIError(Exception):
@@ -95,7 +115,7 @@ def build_ai_input(
 
 
 def estimate_tokens(ai_input: dict) -> int:
-    text = SYSTEM_PROMPT + json.dumps(ai_input, ensure_ascii=False)
+    text = SYSTEM_PROMPT + json.dumps(SUMMARY_SCHEMA) + json.dumps(ai_input, ensure_ascii=False)
     return len(text) // CHARS_PER_TOKEN + MAX_OUTPUT_TOKENS
 
 
@@ -146,17 +166,36 @@ def _check_status(text: str, status: str, next_week: tuple[str, ...] = ()) -> No
         )
 
 
-def check_answer(raw: str, ai_input: dict) -> Summary:
-    """Parse and check the AI answer. Raise AIError if it breaks a rule."""
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not match:
-        raise AIError("The AI answer is not in the agreed form.")
+FORM = "The AI answer is not in the agreed form"
+
+
+def _parse_text(raw: str) -> dict:
+    """The JSON in the answer text. Each error states its reason."""
+    start = raw.find("{")
+    if start < 0:
+        raise AIError(f"{FORM}: the answer has no JSON object.")
     try:
-        data = json.loads(match.group(0))
-        text = str(data["summary"]).strip()
-        next_week = tuple(str(item).strip() for item in data["next_week"] if str(item).strip())
-    except (ValueError, KeyError, TypeError):
-        raise AIError("The AI answer is not in the agreed form.") from None
+        data, _ = json.JSONDecoder().raw_decode(raw[start:])
+    except json.JSONDecodeError as error:
+        raise AIError(f"{FORM}: JSON error \"{error.msg}\" at character {start + error.pos}.") from None
+    return data
+
+
+def check_answer(answer: str | dict, ai_input: dict) -> Summary:
+    """Parse and check the AI answer. Raise AIError if it breaks a rule.
+
+    The answer is the JSON text from the API, or an object that is already parsed.
+    """
+    data = answer if isinstance(answer, dict) else _parse_text(answer)
+    if not isinstance(data, dict):
+        raise AIError(f"{FORM}: the answer is not a JSON object.")
+    missing = [field for field in ("summary", "next_week") if field not in data]
+    if missing:
+        raise AIError(f"{FORM}: the field {', '.join(missing)} is missing.")
+    if not isinstance(data["summary"], str) or not isinstance(data["next_week"], list):
+        raise AIError(f"{FORM}: \"summary\" must be text and \"next_week\" a list.")
+    text = data["summary"].strip()
+    next_week = tuple(str(item).strip() for item in data["next_week"] if str(item).strip())
 
     if not 3 <= _sentences(text) <= 5:
         raise AIError("The AI summary does not have 3 to 5 sentences.")
@@ -206,11 +245,20 @@ def summarize(ai_input: dict, config: Config, client) -> Summary:
             max_tokens=MAX_OUTPUT_TOKENS,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": json.dumps(ai_input, ensure_ascii=False)}],
+            output_config=OUTPUT_CONFIG,
         )
     except (anthropic.AnthropicError, OSError, TimeoutError) as error:
         # API errors, timeouts, and network errors all mean: no summary this week.
-        raise AIError(f"The Claude API call failed ({type(error).__name__}).") from None
+        # The reason from the API goes into the warning (SRG-40). It holds no secret.
+        status = getattr(error, "status_code", None)
+        detail = " ".join(str(getattr(error, "message", "") or "").split())[:200]
+        reason = f", {status}: {detail}" if status else ""
+        raise AIError(f"The Claude API call failed ({type(error).__name__}{reason}).") from None
 
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise AIError(f"{FORM}: the answer stopped at the output limit ({MAX_OUTPUT_TOKENS} tokens).")
+    if getattr(response, "stop_reason", None) == "refusal":
+        raise AIError(f"{FORM}: the AI refused to answer.")
     raw = "".join(getattr(block, "text", "") for block in response.content)
     summary = check_answer(raw, ai_input)
     usage = getattr(response, "usage", None)
