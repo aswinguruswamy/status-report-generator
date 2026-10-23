@@ -243,6 +243,9 @@ def test_the_call_asks_for_structured_output_and_no_forced_tool():
     assert set(schema["required"]) == {"summary", "next_week"}
     assert schema["additionalProperties"] is False
     assert "tool_choice" not in call and "tools" not in call
+    # Thinking counts toward max_tokens: low effort, and room for thinking and the answer (D51).
+    assert call["output_config"]["effort"] == "low"
+    assert call["max_tokens"] >= 2000
 
 
 def test_schema_uses_only_supported_keywords():

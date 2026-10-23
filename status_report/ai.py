@@ -21,7 +21,7 @@ from status_report.metrics import WeekMetrics
 from status_report.models import Ticket
 from status_report.project import ProjectStatus
 
-MAX_OUTPUT_TOKENS = 600
+MAX_OUTPUT_TOKENS = 2000  # Thinking and answer together; a summary needs about 200 (D51)
 TIMEOUT_SECONDS = 60
 CHARS_PER_TOKEN = 3  # A safe estimate: real text has about 4 characters for each token
 KEY_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")
@@ -61,7 +61,9 @@ SUMMARY_SCHEMA = {
     "required": ["summary", "next_week"],
     "additionalProperties": False,
 }
-OUTPUT_CONFIG = {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}}
+# Sonnet 5.5 thinks before it answers, and thinking counts toward max_tokens. A summary of
+# facts needs little thinking, so the effort is low (D51, real run 3).
+OUTPUT_CONFIG = {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}, "effort": "low"}
 
 
 class AIError(Exception):
