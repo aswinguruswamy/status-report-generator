@@ -84,3 +84,20 @@ def test_evaluation_cannot_make_a_real_client():
 
     with pytest.raises(AIError, match="blocked in tests"):
         evaluation.make_client()
+
+
+def test_failed_sample_shows_what_the_ai_wrote(monkeypatch, capsys):
+    # SRG-38: a FAIL line without the text cannot be diagnosed.
+    from pathlib import Path
+
+    from status_report import evaluation
+
+    answer = {"summary": "The project is Red. One ticket is blocked. The team closed 3 tickets.",
+              "next_week": ["Remove the blocker."]}
+    monkeypatch.setattr(evaluation, "make_client", lambda: FakeClient(answer))
+    config = Path(__file__).resolve().parent.parent / "config.yaml"
+    assert evaluation.main(["--yes", "--config", str(config)]) == 1
+    out = capsys.readouterr().out
+    assert "FAIL  1-red-week" in out and "missing: WEB-12" in out
+    assert "      The project is Red. One ticket is blocked." in out
+    assert "      Remove the blocker." in out
