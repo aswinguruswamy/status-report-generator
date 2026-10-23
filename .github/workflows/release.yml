@@ -1,0 +1,54 @@
+name: Release
+
+# Continuous delivery (SRG-31, A7): a version tag such as v1.0.0 runs this workflow.
+# It checks the version, runs all checks again, builds the package, and publishes the
+# GitHub release with the notes from CHANGELOG.md. A person pushes the tag after the
+# "Go" decision (D26). Each action is pinned to a commit SHA (D40).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write   # Needed to make the GitHub release
+
+jobs:
+  release:
+    name: Build and publish the release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Check that the tag and the package version agree
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "The tag $GITHUB_REF_NAME does not match the version $version in pyproject.toml."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt build
+
+      - name: Style check and tests
+        run: |
+          ruff check .
+          pytest
+
+      - name: Build the package
+        run: python -m build
+
+      - name: Get the release notes from CHANGELOG.md
+        run: python scripts/release_notes.py "$GITHUB_REF_NAME" > notes.md
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/* examples/*
+          --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
