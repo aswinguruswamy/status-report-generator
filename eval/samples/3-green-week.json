@@ -1,0 +1,104 @@
+{
+ "name": "3-green-week",
+ "about": "Nothing is blocked, late, or at risk, and 6 tickets were closed. No risk may be invented.",
+ "input": {
+  "week": "2026-10-19 to 2026-10-25",
+  "project_status": "Green",
+  "reason": "Green: No blocked, overdue, or at-risk tickets.",
+  "numbers": {
+   "closed": 6,
+   "opened": 3,
+   "open": 7,
+   "blocked": 0,
+   "overdue": 0
+  },
+  "matrix": {
+   "Black": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Red": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Amber": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "Unmapped": 0
+   },
+   "Green": {
+    "P1": 0,
+    "P2": 2,
+    "P3": 4,
+    "P4": 1,
+    "P5": 0,
+    "Unmapped": 0
+   }
+  },
+  "tickets": [
+   {
+    "key": "APP-31",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Dark mode"
+   },
+   {
+    "key": "APP-32",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Settings page"
+   },
+   {
+    "key": "APP-33",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Push alerts"
+   },
+   {
+    "key": "APP-34",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Crash on start"
+   },
+   {
+    "key": "APP-35",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Font size"
+   },
+   {
+    "key": "APP-36",
+    "priority": "P3",
+    "status": "Done this week",
+    "title": "Share button"
+   }
+  ]
+ },
+ "must_contain": [
+  "Green"
+ ],
+ "must_contain_one_of": [
+  [
+   "6",
+   "six"
+  ]
+ ],
+ "must_not_contain": [
+  "is Red",
+  "is Amber",
+  "blocked by",
+  "delayed",
+  "risk of"
+ ]
+}
