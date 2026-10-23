@@ -143,3 +143,11 @@ def test_report_and_progress_show_the_weekly_numbers(tmp_path, capsys):
     text = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
     assert "## Weekly numbers" in text
     assert "| Opened this week | 1 |" in text
+
+
+def test_command_depends_on_the_interface_not_on_jira():
+    # D01: a second source (GitHub, v2) needs no change in the command.
+    from status_report import cli
+
+    assert not hasattr(cli, "JiraClient")
+    assert hasattr(cli, "TicketSource")

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import requests
 
@@ -31,6 +31,10 @@ TICKET_FIELDS = [
 
 class JiraError(Exception):
     """A Jira problem. The message never contains the token."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status  # HTTP status code, if Jira sent one
 
 
 class JiraClient:
@@ -72,7 +76,7 @@ class JiraClient:
         try:
             me = self._get("/rest/api/3/myself")
         except JiraError as error:
-            if "401" not in str(error):
+            if error.status != 401:
                 raise
             cloud_id = self._cloud_id()
             self.api_url = f"https://api.atlassian.com/ex/jira/{cloud_id}"
@@ -90,7 +94,12 @@ class JiraClient:
         end: date,
         need_flag: bool = False,
     ) -> list[Ticket]:
-        """Return the tickets that were open in the week, or created or closed in it."""
+        """Return the tickets that can matter for the week.
+
+        The query is one day wider on each side, because Jira uses the time zone of the
+        user profile. The weekly numbers do the exact date filtering in the time zone
+        from config.yaml (status_report.metrics).
+        """
         if not self._connected:
             self.connect()
         if need_flag:
@@ -100,18 +109,13 @@ class JiraClient:
         types = ", ".join(f'"{name}"' for name in work_types)
         jql = (
             f'project = "{project_key}" AND issuetype in ({types}) '
-            f'AND created <= "{end:%Y-%m-%d} 23:59" '
-            f'AND (statusCategory != Done OR updated >= "{start:%Y-%m-%d}") '
+            f'AND created < "{end + timedelta(days=2):%Y-%m-%d}" '
+            f'AND (statusCategory != Done OR updated >= "{start - timedelta(days=1):%Y-%m-%d}") '
             "ORDER BY key"
         )
         fields = TICKET_FIELDS + ([self._flag_field] if self._flag_field else [])
 
-        tickets = []
-        for raw in self._search(jql, fields):
-            ticket = self._to_ticket(raw, categories)
-            if self._in_week(ticket, start, end):
-                tickets.append(ticket)
-        return tickets
+        return [self._to_ticket(raw, categories) for raw in self._search(jql, fields)]
 
     def _search(self, jql: str, fields: list[str]):
         token = None
@@ -217,14 +221,6 @@ class JiraClient:
             history=tuple(history),
         )
 
-    @staticmethod
-    def _in_week(ticket: Ticket, start: date, end: date) -> bool:
-        if ticket.created.date() > end:
-            return False
-        if ticket.done_date is None:
-            return True
-        return ticket.done_date.date() >= start
-
     # --- the only way to call Jira: GET ---------------------------------
 
     def _get(self, path: str, params: dict | None = None):
@@ -245,15 +241,19 @@ class JiraClient:
                 continue
             if response.status_code == 401:
                 raise JiraError(
-                    "Jira refused the token (401). Check JIRA_EMAIL and JIRA_API_TOKEN in .env."
+                    "Jira refused the token (401). Check JIRA_EMAIL and JIRA_API_TOKEN in .env.",
+                    status=401,
                 )
             if response.status_code == 403:
                 raise JiraError(
                     "Jira refused access (403). The token needs the scopes "
-                    "read:jira-work and read:jira-user."
+                    "read:jira-work and read:jira-user.",
+                    status=403,
                 )
             if response.status_code >= 400:
-                raise JiraError(f"Jira error {response.status_code} on {path}.")
+                raise JiraError(
+                    f"Jira error {response.status_code} on {path}.", status=response.status_code
+                )
             return response.json()
         raise JiraError(f"Jira is busy or unavailable after {MAX_TRIES} tries ({path}).")
 

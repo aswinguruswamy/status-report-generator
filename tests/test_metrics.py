@@ -6,7 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from status_report.config import load_config
-from status_report.metrics import calculate
+from status_report.metrics import calculate, tickets_in_week
 from status_report.models import StatusChange, Ticket
 
 CONFIG = load_config(Path(__file__).resolve().parent.parent / "config.yaml")
@@ -168,3 +168,16 @@ def test_no_tickets_gives_zero_and_no_number_is_negative():
 def test_days_blocked_is_never_negative():
     t = ticket(created=at(20), history=[change(at(25, 23, 59), "To Do", "Blocked")])
     assert run([t]).days_blocked["SRG-1"] == 0
+
+
+# --- Exact week filter in the local time zone (SRG-33, C3) ---------------------
+
+def test_report_shows_only_tickets_of_the_week():
+    tickets = [
+        ticket("SRG-1"),  # open
+        ticket("SRG-2", created=at(5), history=[change(at(10), "To Do", "Done")]),  # old
+        ticket("SRG-3", created=at(26, 9)),  # after the week
+        ticket("SRG-4", created=at(25, 23, 30)),  # Sunday 23:30 local time
+    ]
+    metrics = run(tickets)
+    assert [t.key for t in tickets_in_week(tickets, metrics)] == ["SRG-1", "SRG-4"]
