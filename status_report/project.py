@@ -19,6 +19,7 @@ from status_report.status import AMBER, BLACK, GREEN, RED, TICKET_STATUSES, tick
 
 LEVELS = (*PRIORITY_LEVELS, UNMAPPED)
 WHY = {BLACK: "overdue", RED: "blocked", AMBER: "due soon and not started"}
+MAX_KEYS = 3  # Keys named in each part of the reason; the report table has all (SRG-36, D43)
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,10 @@ def build_matrix(
 
 def _phrase(level: str, status: str, keys: list[str]) -> str:
     noun = "ticket is" if len(keys) == 1 else "tickets are"
-    return f"{len(keys)} {level} {noun} {WHY[status]} ({', '.join(keys)})"
+    shown = ", ".join(keys[:MAX_KEYS])
+    if len(keys) > MAX_KEYS:
+        shown += f", and {len(keys) - MAX_KEYS} more"
+    return f"{len(keys)} {level} {noun} {WHY[status]} ({shown})"
 
 
 def _phrases(matrix, levels, statuses) -> list[str]:

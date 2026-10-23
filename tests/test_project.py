@@ -130,3 +130,35 @@ def test_two_tickets_use_the_plural():
     tickets = [old_ticket("SRG-1", "Highest", history=blocked()),
                old_ticket("SRG-2", "Highest", history=blocked())]
     assert project(tickets).reason == "Red: 2 P1 tickets are blocked (SRG-1, SRG-2)."
+
+
+# --- Reason length (SRG-36, D43) ---------------------------------------------------------
+
+def test_reason_names_at_most_3_keys_for_40_tickets():
+    tickets = [old_ticket(f"SRG-{n}", "Highest", history=blocked()) for n in range(1, 41)]
+    result = project(tickets)
+    assert result.reason == "Red: 40 P1 tickets are blocked (SRG-1, SRG-2, SRG-3, and 37 more)."
+    assert len(result.reason) < 80
+    assert sum(result.counts()["Red"].values()) == 40  # The counts stay exact
+    assert len(result.matrix["Red"]["P1"]) == 40  # The full list stays for the report table
+
+
+def test_exactly_3_keys_has_no_more_text():
+    tickets = [old_ticket(f"SRG-{n}", "Highest", history=blocked()) for n in range(1, 4)]
+    assert project(tickets).reason == "Red: 3 P1 tickets are blocked (SRG-1, SRG-2, SRG-3)."
+
+
+def test_ai_accepts_each_key_in_the_input_when_the_reason_is_short():
+    import json
+
+    from status_report.ai import build_ai_input, check_answer
+
+    tickets = [old_ticket(f"SRG-{n}", "Highest", history=blocked()) for n in range(1, 41)]
+    metrics = calculate(tickets, CONFIG, START, END, now=THURSDAY)
+    status = project_status(tickets, metrics, CONFIG)
+    ai_input = build_ai_input(tickets, metrics, status, CONFIG)
+    answer = {
+        "summary": "The project is Red. SRG-40 is blocked. SRG-25 is blocked too.",
+        "next_week": ["Free SRG-40 and SRG-25."],
+    }
+    assert check_answer(json.dumps(answer), ai_input).next_week == ("Free SRG-40 and SRG-25.",)
