@@ -44,5 +44,5 @@ def test_the_report_still_shows_the_titles(tmp_path, monkeypatch):
          today=date(2026, 10, 22), ai_client=ai)
     sent = ai.calls[0]["messages"][0]["content"]
     assert "Confidential title" not in sent
-    report = (tmp_path / "status-report-SRG-2026-10-19.md").read_text()
+    report = (tmp_path / "SRG-2026-W43.md").read_text()
     assert "Confidential title" in report

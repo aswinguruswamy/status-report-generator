@@ -17,7 +17,7 @@ from test_metrics import CONFIG
 
 from status_report.metrics import calculate, tickets_in_week
 from status_report.project import project_status
-from status_report.report import SECTIONS, to_html, to_markdown
+from status_report.report import HTML_SECTIONS, MD_SECTIONS, to_html, to_markdown
 
 SEEDS = range(300)
 REGRESSIONS = Path(__file__).parent / "regressions"
@@ -55,8 +55,10 @@ def check_week(tickets) -> None:
         assert all(value >= 0 for value in metrics.counts().values())
         assert all(d is None or d >= 0 for d in metrics.days_blocked.values())
         # 3. The report has all sections.
-        for section in SECTIONS:
-            assert f"## {section}" in markdown and f"<h2>{section}</h2>" in page
+        headings = [line[3:] for line in markdown.splitlines() if line.startswith("## ")]
+        assert [h for h in headings if h != "Warnings"] == list(MD_SECTIONS)  # Order (SRG-27)
+        for section in HTML_SECTIONS:
+            assert f"<h2>{section}</h2>" in page
         # 4. The numbers agree with each other.
         assert not set(metrics.open) & set(metrics.closed)
         assert set(metrics.blocked) <= set(metrics.open)
