@@ -7,6 +7,7 @@ each later test run as a permanent test.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,6 +22,21 @@ from status_report.report import SECTIONS, to_html, to_markdown
 SEEDS = range(300)
 REGRESSIONS = Path(__file__).parent / "regressions"
 NOW_VALUES = [None, datetime(2026, 10, 22, 16, tzinfo=UTC)]  # Finished week, current week
+
+
+def _table_rows_complete(markdown: str) -> bool:
+    """Each table row has the same number of cells as its header (SRG-35)."""
+    cells = None
+    for line in markdown.splitlines():
+        if not line.startswith("|"):
+            cells = None  # A line that is not a table row ends the table
+            continue
+        count = len(re.split(r"(?<!\\)\|", line)) - 2
+        if cells is None:
+            cells = count
+        elif count != cells:
+            return False
+    return True
 
 
 def check_week(tickets) -> None:
@@ -51,6 +67,9 @@ def check_week(tickets) -> None:
         counted = {t.key for t in tickets if t.work_type in CONFIG.work_types}
         assert {t.key for t in week} <= counted
         assert "<script>" not in page
+        # 6. Each Markdown table row is complete, and no raw HTML is in the .md file (SRG-35).
+        assert _table_rows_complete(markdown)
+        assert "<script>" not in markdown
 
 
 @pytest.mark.parametrize("seed", SEEDS)
