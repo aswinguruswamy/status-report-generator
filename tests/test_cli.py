@@ -165,7 +165,7 @@ def test_report_shows_project_status_matrix_and_ticket_status(tmp_path, capsys):
     assert "**AMBER** – Amber:" in text
     assert "| SRG-1 | Read tickets \\| Jira | Story | 🟠 Amber | To Do | High | 2026-10-24 |" in text
     page = (tmp_path / "SRG-2026-W43.html").read_text()
-    assert "<h2>Priority matrix</h2>" in page and "<strong>AMBER</strong>" in page
+    assert "<h2>Priority matrix</h2>" in page and '<span class="st st-amber">Amber</span> Amber:' in page
 
 
 def test_report_has_the_ai_summary_when_the_ai_answers(tmp_path, capsys):
