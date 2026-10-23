@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from status_report.config import ConfigError, load_config
 from status_report.jira_client import JiraError
 from status_report.metrics import calculate, tickets_in_week
+from status_report.project import project_status
 from status_report.report import write_report
 from status_report.sources import TicketSource, default_source
 
@@ -80,16 +81,21 @@ def main(argv: list[str] | None = None, client: TicketSource | None = None, toda
         tickets = client.fetch_tickets(
             project, config.work_types, start, end, need_flag="flag" in config.blocked_methods
         )
-        print(f"    {len(tickets)} tickets read")
         metrics = calculate(tickets, config, start, end, now=now)
+        week_tickets = tickets_in_week(tickets, metrics)
+        print(f"    {len(week_tickets)} tickets in the week")
         counts = metrics.counts()
         print("    " + ", ".join(f"{name} {value}" for name, value in counts.items()))
+        status = project_status(week_tickets, metrics, config)
+        print(f"    Project status: {status.reason}")
+        for warning in status.warnings:
+            print(f"    WARNING: {warning}")
 
         use_ai = config.ai_enabled and not args.no_ai
         print(f"    AI summary: {'on' if use_ai else 'off'}")
 
         print("3/3 Writing the report...")
-        paths = write_report(tickets_in_week(tickets, metrics), metrics, project, folder, formats)
+        paths = write_report(week_tickets, metrics, status, project, folder, formats)
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return EXIT_ERROR
