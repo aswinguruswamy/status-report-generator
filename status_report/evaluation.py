@@ -29,6 +29,7 @@ class Result:
     passed: bool
     problems: tuple[str, ...]
     tokens: int = 0
+    text: str = ""  # The summary and Next week items, shown for a failed sample (SRG-38)
 
 
 def load_samples(folder: Path = SAMPLES) -> list[dict]:
@@ -53,7 +54,7 @@ def evaluate(sample: dict, summary: Summary) -> Result:
         if _has(text, phrase):
             problems.append(f"must not contain: {phrase}")
     tokens = summary.input_tokens + summary.output_tokens
-    return Result(sample["name"], not problems, tuple(problems), tokens)
+    return Result(sample["name"], not problems, tuple(problems), tokens, text)
 
 
 def run(samples: list[dict], config, client) -> list[Result]:
@@ -94,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
     results = run(samples, config, client)
     for r in results:
         print(f"{'PASS' if r.passed else 'FAIL'}  {r.name:<16} {r.tokens:>6} tokens  {'; '.join(r.problems)}")
+        if not r.passed and r.text:
+            print("      " + r.text.replace("\n", "\n      "))  # Show what the AI wrote
     passed = sum(r.passed for r in results)
     print(f"Result: {passed} of {len(results)} passed.")
     return 0 if passed == len(results) else 1

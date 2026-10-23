@@ -15,7 +15,8 @@ from test_cli import REPO_CONFIG, FakeClient, ticket
 
 from status_report.cli import EXIT_OK, main
 
-REPORT = "status-report-SRG-2026-10-19.md"
+REPORT = "SRG-2026-W43.md"
+NOT_AVAILABLE = "## Executive summary\n\n_Not available in this report. See Warnings._"
 GOOD = {
     "summary": "The project is Amber. SRG-1 is due soon and not started. No ticket was closed.",
     "next_week": ["Start SRG-1."],
@@ -30,8 +31,9 @@ def make(tmp_path, *args, ai=None):
 
 
 def without_ai_parts(text: str) -> str:
-    text = re.sub(r"## Executive summary.*?(?=## Weekly numbers)", "", text, flags=re.DOTALL)
-    return re.sub(r"\n## Warnings.*?(?=\n## Tickets)", "", text, flags=re.DOTALL)
+    for section in ("Executive summary", "Next week", "Warnings"):  # The parts from the AI
+        text = re.sub(rf"\n## {section}\n.*?(?=\n## )", "", text, flags=re.DOTALL)
+    return text
 
 
 def test_no_ai_option_makes_no_call_and_no_summary(tmp_path, capsys):
@@ -39,7 +41,7 @@ def test_no_ai_option_makes_no_call_and_no_summary(tmp_path, capsys):
     code, text = make(tmp_path, "--no-ai", ai=ai)
     assert code == EXIT_OK
     assert ai.calls == []
-    assert "## Executive summary" not in text
+    assert NOT_AVAILABLE in text
     assert "AI summary: off" in capsys.readouterr().out
 
 
@@ -48,7 +50,7 @@ def test_api_connection_error_still_makes_the_report(tmp_path):
     ai = FakeAI(error=anthropic.APIConnectionError(request=request))
     code, text = make(tmp_path, ai=ai)
     assert code == EXIT_OK
-    assert "## Executive summary" not in text
+    assert NOT_AVAILABLE in text
     assert "No AI summary in this report. The Claude API call failed (APIConnectionError)." in text
 
 
@@ -68,5 +70,5 @@ def test_missing_api_key_still_makes_the_report(tmp_path):
 def test_status_matrix_and_numbers_are_the_same_with_or_without_ai(tmp_path):
     _, with_ai = make(tmp_path / "a", ai=FakeAI(GOOD))
     _, without = make(tmp_path / "b", "--no-ai")
-    assert "## Executive summary" in with_ai
+    assert NOT_AVAILABLE not in with_ai
     assert without_ai_parts(with_ai) == without_ai_parts(without)
