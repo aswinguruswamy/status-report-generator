@@ -33,6 +33,14 @@ status-report --project SRG --format both --no-ai
 status-report --help                   # all options
 ```
 
+The report goes into the `output` folder. Git ignores this folder. The file name has the
+project key and the ISO week, for example `output/SRG-2026-W43.md`.
+
+The Markdown report has these sections, in this order: project status, executive summary,
+key numbers, priority matrix, blocked tickets, overdue tickets, closed this week, next week,
+warnings, and all tickets. Each status is a colour mark and a word, for example "🔴 Red".
+If the AI summary is not available, the summary and "Next week" sections say so.
+
 **Caution:** Never commit the `.env` file. It contains your secrets.
 
 ## Tests
