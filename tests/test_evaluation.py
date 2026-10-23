@@ -73,3 +73,14 @@ def test_runner_passes_with_good_answers():
         text, items = GOOD_ANSWERS[s["name"]]
         results += run([s], CONFIG, FakeClient(json.loads(json.dumps({"summary": text, "next_week": items}))))
     assert all(r.passed for r in results), [r for r in results if not r.passed]
+
+
+def test_evaluation_cannot_make_a_real_client():
+    # SRG-37: the guard in conftest.py also covers the evaluation module.
+    import pytest
+
+    from status_report import evaluation
+    from status_report.ai import AIError
+
+    with pytest.raises(AIError, match="blocked in tests"):
+        evaluation.make_client()

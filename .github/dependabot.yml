@@ -1,0 +1,15 @@
+# Dependabot checks each week for new versions and opens a pull request (SRG-37).
+# The CI runs on each pull request. A person reviews and merges it.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

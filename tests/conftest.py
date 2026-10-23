@@ -2,7 +2,7 @@
 
 import pytest
 
-from status_report import ai, cli
+from status_report import ai, cli, evaluation
 
 
 @pytest.fixture(autouse=True)
@@ -14,3 +14,4 @@ def no_real_ai_calls(monkeypatch):
 
     monkeypatch.setattr(ai, "make_client", blocked)
     monkeypatch.setattr(cli, "make_client", blocked)
+    monkeypatch.setattr(evaluation, "make_client", blocked)  # SRG-37

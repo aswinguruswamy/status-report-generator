@@ -1,6 +1,8 @@
 name: CI
 
 # Runs on each pull request and on each push to main (D24).
+# Each action is pinned to a commit SHA, so a moved tag cannot change the CI (SRG-37).
+# Dependabot opens a pull request when a new version is out (.github/dependabot.yml).
 on:
   pull_request:
   push:
@@ -10,22 +12,23 @@ permissions:
   contents: read
 
 jobs:
+  # Branch protection needs this check name. Do not change it.
   checks:
     name: Tests, style, and secret scan
     runs-on: ubuntu-latest
     steps:
       - name: Get the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0   # The secret scan needs the full history
 
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
@@ -34,6 +37,30 @@ jobs:
 
       - name: Style check
         run: ruff check .
+
+      - name: Unit tests
+        run: pytest
+
+  # The README tells users to install Python 3.12. The tool supports 3.11 and newer.
+  # These jobs run the tests on the newer versions too (SRG-37).
+  python-versions:
+    name: Tests on Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - name: Get the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Unit tests
         run: pytest
