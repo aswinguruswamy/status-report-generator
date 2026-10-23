@@ -47,7 +47,8 @@ ai:
   enabled: true
   model: claude-sonnet-5-5         # Model name. Change it here, not in the code.
   max_tokens_per_run: 8000         # Cost limit for each run (input + output tokens)
-  hide_titles_from_ai: false       # true: send ticket keys only, no titles
+  hide_titles_from_ai: false       # true: the AI gets ticket keys, priorities, and statuses,
+                                   # never titles. The report still shows the titles (R04).
 
 output:
   folder: output                   # Excluded in .gitignore
