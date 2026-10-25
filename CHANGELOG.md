@@ -19,7 +19,7 @@ The first release of the Weekly Status Report Generator.
 
 **AI summary**
 - SRG-23: Write the executive summary from facts only, with answer checks.
-- SRG-24: AI evaluation set (5 sample weeks).
+- SRG-24: AI evaluation set (6 sample weeks; SRG-40 added the sample with quotes in the titles).
 - SRG-25: Make the report without the AI (`--no-ai`, and when the AI fails).
 - SRG-26: Option to hide ticket titles from the AI.
 
