@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0 (2026-10-27)
+## v1.0.0 (2026-10-24)
 
 The first release of the Weekly Status Report Generator.
 

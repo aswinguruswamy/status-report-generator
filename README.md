@@ -147,7 +147,7 @@ limit, one run costs less than US$0.04. Prices change: see
 
 ```
 pytest                                  # all tests, no API calls (about 5 seconds)
-python -m status_report.evaluation      # AI evaluation set: 5 real Claude API calls
+python -m status_report.evaluation      # AI evaluation set: 6 real Claude API calls
 python scripts/make_sample.py           # make the sample report again after a layout change
 ```
 
