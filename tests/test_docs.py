@@ -30,3 +30,16 @@ def test_each_config_option_in_the_readme_is_in_config_yaml():
     config = (ROOT / "config.yaml").read_text(encoding="utf-8")
     for option in re.findall(r"^\| `([a-z_.]+)` \|", README, re.MULTILINE):
         assert option.split(".")[-1] + ":" in config, option
+
+
+def test_each_document_in_the_docs_index_is_in_docs():
+    # D32: the public copies of the Confluence pages.
+    names = re.findall(r"`([A-Za-z0-9-]+\.pdf)`", (ROOT / "docs" / "README.md").read_text())
+    names += [f"Sprint-{n}-Review.pdf" for n in range(4)]
+    for name in names:
+        assert (ROOT / "docs" / name).is_file(), name
+
+
+def test_readme_links_to_files_in_docs():
+    for target in re.findall(r"\]\((docs/[^)]+)\)", README):
+        assert (ROOT / target).exists(), target

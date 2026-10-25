@@ -42,7 +42,7 @@ The first release of the Weekly Status Report Generator.
 
 ### Verified
 - Real run against this Jira project: correct numbers, 4.5 seconds, AI summary done.
-- AI evaluation set: 6 of 6. Tests: 607, on Python 3.11, 3.12, and 3.13.
+- AI evaluation set: 6 of 6. Tests: 609, on Python 3.11, 3.12, and 3.13.
 
 ### Known limits
 - Tested on Jira Cloud team-managed projects only.
