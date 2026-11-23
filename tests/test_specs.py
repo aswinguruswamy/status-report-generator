@@ -62,3 +62,12 @@ def test_ci_comment_matches_the_readme():
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "tells users to install Python 3.12" not in workflow
     assert "Python 3.11 or newer" in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def test_devcontainer_uses_the_streamlit_version_of_requirements():
+    # Codespaces must run the demo with the same Streamlit as CI and Streamlit Cloud.
+    pin = re.search(r"^streamlit==([\d.]+)$", (ROOT / "requirements.txt").read_text(), re.MULTILINE)
+    container = (ROOT / ".devcontainer" / "devcontainer.json").read_text(encoding="utf-8")
+    installs = re.findall(r"pip3 install --user (streamlit[^;\s]*)", container)
+    assert pin and installs == [f"streamlit=={pin.group(1)}"]
+    assert "--server.enableCORS false --server.enableXsrfProtection false" in container
