@@ -26,8 +26,8 @@ v1.0.0 release.
 - The forecast needs 12 weeks (84 days) from the first closed ticket. A younger team shows
   "Not enough history yet – needs 12 weeks".
 - "First closed ticket" uses the Jira Resolved date.
-- Speed with real Jira (10 teams in under 15 seconds) is not measured yet. The demo opens in
-  under 1 second in the tests.
+- Not checked yet with real Jira: the speed of 10 teams (target under 15 seconds) and a ticket
+  key that opens Jira. The demo opens in under 1 second in the tests.
 - The demo uses recorded, made-up Jira data with a fixed read time (2026-12-01 09:42), so its
   dates do not move.
 

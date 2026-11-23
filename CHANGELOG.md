@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased (v2.0.0)
+<!-- At the v2 release: change "## Unreleased (v2.0.0)" below to "## v2.0.0 (<date>)" and set
+the version in pyproject.toml to 2.0.0. The release workflow publishes that section. -->
 
-<!-- At the release: change the heading above to "## v2.0.0 (<date>)" and set the version in
-pyproject.toml to 2.0.0. The release workflow publishes this section as the release notes. -->
+## Unreleased (v2.0.0)
 
 SRG v2: one table for every team, a report on demand, and no AI (spec `specs/spec.md` v1.3).
 Public demo with made-up data: https://srg-app.streamlit.app

@@ -62,8 +62,12 @@ def test_ci_scans_dependencies_and_licences():
 
 def test_v2_notes_are_ready_for_the_release():
     # The v2.0.0 section waits under "Unreleased (v2.0.0)" until the release review.
+    # Before the release the heading is "Unreleased (v2.0.0)"; after it, "v2.0.0 (<date>)".
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    section = text.split("## Unreleased (v2.0.0)", 1)[1].split("\n## ", 1)[0]
+    match = re.search(r"^## (Unreleased \(v2\.0\.0\)|v2\.0\.0 \()", text, re.MULTILINE)
+    assert match, "CHANGELOG.md has no v2.0.0 section"
+    section = text[match.end():].split("\n## ", 1)[0]
+    assert "<!--" not in section  # The release notes have no hidden instructions
     assert "### Stories in this release" in section and "### Known limits" in section
     for task in range(1, 10):
         assert f"- S{task}:" in section
