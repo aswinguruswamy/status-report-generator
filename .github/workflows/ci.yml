@@ -64,3 +64,34 @@ jobs:
 
       - name: Unit tests
         run: pytest
+
+  # Shared CI standard SH1 (v2 tech setup): known security problems in the dependencies,
+  # and no strong copyleft licence in the runtime dependencies.
+  audits:
+    name: Dependency and licence scans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Dependency scan (pip-audit)
+        run: |
+          pip install "pip-audit>=2.7"
+          pip-audit -r requirements.txt
+
+      - name: Licence scan of the runtime dependencies (pip-licenses)
+        run: |
+          python -m venv /tmp/runtime
+          /tmp/runtime/bin/pip install --quiet .
+          pip install pip-licenses==5.5.5
+          pip-licenses --python /tmp/runtime/bin/python --fail-on="${STRONG_COPYLEFT}"
+        env:
+          # Exact licence names (no substring match), so LGPL is allowed.
+          STRONG_COPYLEFT: "GPL-2.0;GPL-2.0-only;GPL-2.0-or-later;GPL-3.0;GPL-3.0-only;GPL-3.0-or-later;AGPL-3.0;AGPL-3.0-only;AGPL-3.0-or-later;GNU General Public License (GPL);GNU General Public License v2 (GPLv2);GNU General Public License v2 or later (GPLv2+);GNU General Public License v3 (GPLv3);GNU General Public License v3 or later (GPLv3+);GNU Affero General Public License v3;GNU Affero General Public License v3 or later (AGPLv3+)"
