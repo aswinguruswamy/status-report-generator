@@ -2,6 +2,8 @@
 requests==2.34.2
 PyYAML==6.0.3
 python-dotenv==1.2.4
+# MCF forecast code (spec R4.1). Pinned to an MCF main commit; tag v2.0.0 at release.
+mcf @ git+https://github.com/aswinguruswamy/monte-carlo-delivery-forecast@8b3ffbb130a1a3764c8a99d06a8292946a3e5ffe
 
 # Development
 pytest==9.2.0

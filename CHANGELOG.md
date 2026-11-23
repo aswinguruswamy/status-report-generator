@@ -10,6 +10,7 @@ SRG v2 (spec `specs/spec.md` v1.3).
 - S4: Spec §4 definitions in code: counted, cleaned up, done, open, the 14-day window (local time), effective due date, overdue, blocked, not started, colour scope (sprint or last 14 days) and done/total.
 - S5: Colours: ticket colour with "no date + high priority = Amber" (Black, Red, Amber, Green; first rule wins); the v1 team rule on the colour scope; the reason text with count, priority level, cause and up to 3 keys; unknown priorities are not high and give a warning.
 - S6: The team table (`portfolio.py`): one row for each team with colour, reason, done/total ("3/5", "4/9 · 2 sprints", "1/4 · last 14 days"), % of open tickets with no due date, closed/opened in the last 14 days, the Black, Red and Amber tickets, and "Could not read – <reason>" for a team that fails. Sorted Red, Amber, Green, then name.
+- S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to an MCF commit).
 
 ## v1.0.0 (2026-10-24)
 
