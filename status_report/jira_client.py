@@ -31,7 +31,6 @@ TICKET_FIELDS = [
     "resolution",
 ]
 CLEANED_UP = {"won't do", "duplicate"}  # Spec §4: cleaned up; never done, open or counted
-FIRST_CLOSED_PAGES = 5
 
 
 NO_TOKEN = "No Jira token found. Add JIRA_API_TOKEN to .env."
@@ -173,21 +172,40 @@ class JiraClient:
         )
 
     def active_sprints(self, project_key: str) -> tuple[Sprint, ...]:
-        """Active sprints on the boards of the project. A board without sprints (Kanban) has none."""
-        boards = self._get("/rest/agile/1.0/board", {"projectKeyOrId": project_key, "maxResults": 50})
+        """Active sprints on the boards of the project. A board without sprints (Kanban) has none.
+
+        A board can also show sprints of other projects; those are left out when Jira says
+        which board a sprint belongs to (originBoardId).
+        """
+        boards = self._paged("/rest/agile/1.0/board", {"projectKeyOrId": project_key})
+        board_ids = {board["id"] for board in boards}
         found: dict[int, Sprint] = {}
-        for board in boards.get("values", []):
+        for board_id in sorted(board_ids):
             try:
-                page = self._get(f"/rest/agile/1.0/board/{board['id']}/sprint", {"state": "active"})
+                sprints = self._paged(f"/rest/agile/1.0/board/{board_id}/sprint", {"state": "active"})
             except JiraError as error:
                 if error.status == 400:  # "The board does not support sprints"
                     continue
                 raise
-            for raw in page.get("values", []):
+            for raw in sprints:
+                origin = raw.get("originBoardId")
+                if origin is not None and origin not in board_ids:
+                    continue
                 sprint = _to_sprint(raw)
                 if sprint.state == "active":
                     found[sprint.id] = sprint
         return tuple(found[key] for key in sorted(found))
+
+    def _paged(self, path: str, params: dict) -> list[dict]:
+        """All values of an Agile API list (startAt / isLast paging)."""
+        values, start = [], 0
+        while True:
+            page = self._get(path, {**params, "startAt": start, "maxResults": 50})
+            batch = page.get("values", [])
+            values.extend(batch)
+            start += len(batch)
+            if page.get("isLast", True) or not batch:
+                return values
 
     def next_release(self, project_key: str, today: date) -> Release | None:
         """Spec R4.2: the unreleased fix version with the earliest release date on or after today."""
@@ -208,9 +226,7 @@ class JiraClient:
             f'project = "{project_key}" AND issuetype in ({types}) AND statusCategory = Done '
             "ORDER BY resolutiondate ASC"
         )
-        for number, raw in enumerate(self._search(jql, ["resolution", "resolutiondate"], changelog=False)):
-            if number >= PAGE_SIZE * FIRST_CLOSED_PAGES:
-                return None
+        for raw in self._search(jql, ["resolution", "resolutiondate"], changelog=False):
             f = raw["fields"]
             if _resolution(f) in CLEANED_UP or not f.get("resolutiondate"):
                 continue
@@ -260,8 +276,8 @@ class JiraClient:
                 params["nextPageToken"] = token
             page = self._get("/rest/api/3/search/jql", params)
             for issue in page.get("issues", []):
-                changelog = issue.get("changelog") or {}
-                if changelog.get("total", 0) > len(changelog.get("histories", [])):
+                log = issue.get("changelog") or {}
+                if changelog and log.get("total", 0) > len(log.get("histories", [])):
                     issue["changelog"] = {"histories": self._full_changelog(issue["key"])}
                 yield issue
             token = page.get("nextPageToken")
@@ -388,7 +404,8 @@ class JiraClient:
             if response.status_code == 403:
                 raise JiraError(
                     "Jira refused access (403). The token needs the scopes "
-                    "read:jira-work and read:jira-user.",
+                    "read:jira-work and read:jira-user, and for sprints "
+                    "read:board-scope:jira-software and read:sprint:jira-software.",
                     status=403,
                 )
             if response.status_code >= 400:

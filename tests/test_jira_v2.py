@@ -285,3 +285,69 @@ def test_demo_data_is_made_up():
     text = DATA_FILE.read_text(encoding="utf-8")
     assert "atlassian.net" not in text and "SRG-" not in text
     assert not re.search(r"[\w.]+@[\w-]+\.\w+", text)  # No email address
+
+
+def test_unexpected_error_in_one_team_does_not_stop_the_others():
+    base = jira()
+
+    def handler(url, params):
+        if "/project/BET/versions" in url:
+            return FakeResponse(data=[{"name": None, "released": False, "releaseDate": 5}])
+        return base(url, params)
+
+    client, _ = client_for(handler)
+    result = read_teams(client, config_for("ALP", "BET"), READ_AT)
+    assert isinstance(result["BET"], JiraError) and "cannot read" in str(result["BET"])
+    assert result["ALP"].key == "ALP"
+
+
+def test_no_sprint_field_means_no_open_sprints_clause():
+    base = jira()
+
+    def handler(url, params):
+        if url.endswith("/rest/api/3/field"):
+            return FakeResponse(data=[])
+        return base(url, params)
+
+    client, session = client_for(handler)
+    read(client)
+    jql = next(c[2]["jql"] for c in session.calls
+               if c[1].endswith("/search/jql") and "ORDER BY key" in c[2]["jql"])
+    assert "openSprints" not in jql
+
+
+def test_boards_are_paged_and_other_projects_sprints_are_left_out():
+    base = jira()
+
+    def handler(url, params):
+        if url.endswith("/rest/agile/1.0/board"):
+            if params["startAt"] == 0:
+                return FakeResponse(data={"values": [{"id": 1}], "isLast": False})
+            return FakeResponse(data={"values": [{"id": 2}], "isLast": True})
+        if url.endswith("/board/1/sprint"):
+            other = {**raw_sprint(99, "active"), "originBoardId": 50}
+            return FakeResponse(data={"values": [{**raw_sprint(11, "active"), "originBoardId": 1},
+                                                 other], "isLast": True})
+        return base(url, params)
+
+    client, _ = client_for(handler)
+    assert [s.id for s in read(client).active_sprints] == [11, 12]
+
+
+def test_sprint_date_without_milliseconds():
+    issues = [raw_issue("ALP-1", sprints=[raw_sprint(11, "active", "2026-12-08T22:00:00Z")])]
+    client, _ = client_for(jira(issues=issues))
+    assert read(client).tickets[0].sprints[0].end == datetime(2026, 12, 8, 22, tzinfo=UTC)
+
+
+def test_403_names_the_sprint_scopes():
+    base = jira()
+
+    def handler(url, params):
+        if url.endswith("/rest/agile/1.0/board"):
+            return FakeResponse(status_code=403)
+        return base(url, params)
+
+    client, _ = client_for(handler)
+    with pytest.raises(JiraError, match="read:sprint:jira-software"):
+        read(client)
