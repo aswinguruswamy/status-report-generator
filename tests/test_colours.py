@@ -215,3 +215,17 @@ def test_ac16_same_data_gives_the_same_colours_and_reasons():
         assert (first.colour, first.reason) == (again.colour, again.reason)
         assert first.ticket_colours == again.ticket_colours
         assert first.colour in ("Red", "Amber", "Green")
+
+
+def test_one_opened_ticket_is_singular():  # S5 review
+    assert team([ticket("BET-1", due=9)], closed=0, opened=1).reason == (
+        "Amber: The team closed 0 and opened 1 ticket in the last 14 days."
+    )
+
+
+def test_keys_sort_by_number_and_keys_without_a_number_do_not_fail():  # S5 review
+    tickets = [ticket(k, priority="Highest", status="Blocked", due=9) for k in ("A-10", "A-9", "A-100")]
+    assert team(tickets).reason == "Red: 3 P1 tickets are blocked (A-9, A-10, A-100)."
+    from status_report.project import key_order
+
+    assert sorted(["FOO", "A-2"], key=key_order) == ["A-2", "FOO"]

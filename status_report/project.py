@@ -188,7 +188,8 @@ def team_status(scope_tickets, closed: int, opened: int, config: Config, today) 
         return TeamStatus(RED, _reason(RED, red), colours, tuple(warnings))
     amber = parts(other, black_red) + parts(high, ((AMBER, DUE_SOON), (AMBER, NO_DUE_DATE)))
     if closed < opened:
-        amber.append(f"the team closed {closed} and opened {opened} tickets in the last 14 days")
+        noun = "ticket" if opened == 1 else "tickets"
+        amber.append(f"the team closed {closed} and opened {opened} {noun} in the last 14 days")
     if amber:
         return TeamStatus(AMBER, _reason(AMBER, amber), colours, tuple(warnings))
     reason = GREEN_OK if colours else GREEN_EMPTY
