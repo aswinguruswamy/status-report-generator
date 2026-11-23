@@ -1,6 +1,6 @@
 # Spec: SRG v2 – Team status table and report
 
-Version: 1.3 | Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = consistency fix; 1.2 = his MCF trim decision; 1.3 = video) | Date: 2026-11-22
+Version: 1.4 | Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = consistency fix; 1.2 = his MCF trim decision; 1.3 = video; 1.4 = screenshots in place of the video, his decision 2026-11-23) | Date: 2026-11-23
 Tool: SRG | MoSCoW: Must (R4 forecast: Should) | Source: `specs/SRG/requirements.md` v1.3, `clarify/SRG-clarify-log.md`, SRG v1 code (`status.py`, `project.py`, `metrics.py`, `config.yaml`, read on 2026-11-22)
 
 Requirement IDs `SRG-Rn` match R1–R14 and N1–N8 on the requirements page.
@@ -92,7 +92,7 @@ The **next release** is the unreleased Jira fix version with the earliest releas
 | SRG-R13.4 | Unwanted | If a ticket has a priority that is not in `priority_map`, then the SRG shall treat it as not high priority and show a warning with the ticket key. | v1 |
 | SRG-R14.1 | Optional | Where demo mode is on, the SRG shall use the sample data in the repo and need no Jira account or token. | R14 |
 | SRG-R14.2 | State | While demo mode is on, the SRG shall show "Sample data" on the page and in the report. | R14, N4 |
-| SRG-R15.1 | Ubiquitous | The README and the portfolio card shall link a video of 2 minutes or less that shows the team table, a team's details and the report. | R15, SH-4.4 |
+| SRG-R15.1 | Ubiquitous | The README shall show screenshots of the team table, a team's details and the report, and link the public demo. (v1.4: screenshots in place of the video.) | R15, SH-4.4, Aswin 2026-11-23 |
 | SRG-N4.1 | Unwanted | If, on a read after start, the SRG cannot read one team, then it shall show that row as "Could not read – <reason>" and show the other teams. | N4 |
 | SRG-N4.2 | Unwanted | If a whole refresh fails, then the SRG shall show the error and "Last good read hh:mm", and shall not show the old data as new. | N4 |
 
@@ -144,7 +144,7 @@ The **next release** is the unreleased Jira fix version with the earliest releas
 | AC42 | Real data, Beta details open | Click BET-12 | Jira opens BET-12 | manual |
 | AC43 | Demo mode | Page opens | Under 3 s on a standard laptop | manual (timed) |
 | AC44 | 10 teams, real Jira | Refresh | Under 15 s | manual (before release) |
-| AC45 | README | Docs test | Contains a video link (SRG-R15.1) | unit |
+| AC45 | README | Docs test | Shows the 3 screenshots and links the public demo (SRG-R15.1) | unit |
 
 ## 7. Non-functional requirements
 | ID | Area | Requirement | Check |
@@ -250,3 +250,4 @@ Result: **pass (pre-check)**. Approved by Aswin on 2026-11-22.
 | 1.1 | 2026-11-22 | Consistency fix, no scope change: R4.1 "weekly counts" → "daily counts" (the MCF method); short history depends on MCF R8 | Claude (admin fix, allowed by CLAUDE.md §5) |
 | 1.3 | 2026-11-22 | Video (R15.1) | Aswin Guruswamy (SH-4.4) |
 | 1.2 | 2026-11-22 | Forecast needs 12 weeks of history (was 5), because the MCF young-team rule is cut; R4.1 uses the MCF 84-day window | Aswin Guruswamy (MCF trim decision) |
+| 1.4 | 2026-11-23 | R15.1 and AC45: screenshots of the table, the details and the report in place of the video | Aswin Guruswamy |
