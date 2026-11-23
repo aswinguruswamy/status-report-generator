@@ -69,7 +69,7 @@ def read_teams(client, config, read_at, keys=None) -> dict:
             )
         except JiraError as error:
             return error
-        except (KeyError, ValueError, TypeError) as error:  # Data the tool cannot read
+        except Exception as error:  # noqa: BLE001 - one team must not stop the others (N4.1)
             return JiraError(f"Jira sent data that the tool cannot read ({type(error).__name__}).")
 
     with ThreadPoolExecutor(max_workers=MAX_PARALLEL_READS) as pool:
