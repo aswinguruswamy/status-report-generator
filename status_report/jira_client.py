@@ -1,6 +1,8 @@
-"""Reads tickets from Jira Cloud (SRG-13, D19, D23, D25).
+"""Reads tickets from Jira Cloud (SRG-13, D19, D23, D25; v2 plan S3).
 
-The client sends GET requests only, so it cannot change Jira data (D25).
+The client sends GET requests only, so it cannot change Jira data (D25, spec N5).
+v2 reads, for each team: the project, its active sprints (Agile API: board -> active
+sprints), its next release (fix version), the tickets, and the first closed ticket.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from datetime import date, datetime, timedelta
 
 import requests
 
-from status_report.models import StatusChange, Ticket
+from status_report.models import Release, Sprint, StatusChange, TeamData, Ticket
 
 PAGE_SIZE = 100
 MAX_TRIES = 5
@@ -26,7 +28,10 @@ TICKET_FIELDS = [
     "created",
     "resolutiondate",
     "labels",
+    "resolution",
 ]
+CLEANED_UP = {"won't do", "duplicate"}  # Spec §4: cleaned up; never done, open or counted
+FIRST_CLOSED_PAGES = 5
 
 
 NO_TOKEN = "No Jira token found. Add JIRA_API_TOKEN to .env."
@@ -55,11 +60,14 @@ class JiraClient:
     def __init__(self, base_url: str, email: str, token: str, session=None, sleep=time.sleep):
         self.site_url = base_url.rstrip("/")
         self.api_url = self.site_url
+        self.browse_url: str | None = f"{self.site_url}/browse/"  # None: no ticket links
         self._auth = (email, token)
         self._session = session or requests.Session()
         self._sleep = sleep
         self._status_categories: dict[str, str] | None = None
         self._flag_field: str | None = None
+        self._sprint_field: str | None = None
+        self._fields_found = False
         self._connected = False
 
     # --- setup ---------------------------------------------------------
@@ -111,7 +119,105 @@ class JiraClient:
                 raise ProjectNotFound(project_key) from None
             raise
 
-    # --- reading -------------------------------------------------------
+    # --- v2 reading: one team -------------------------------------------
+
+    def prepare(self, need_flag: bool = False) -> None:
+        """Read the shared lists once, before the parallel team reads (plan SD3)."""
+        if not self._connected:
+            self.connect()
+        self._status_category_map()
+        self._find_fields()
+        if not need_flag:
+            self._flag_field = None
+
+    def read_team(
+        self,
+        project_key: str,
+        work_types: tuple[str, ...],
+        today: date,
+        read_at: datetime,
+        lookback_days: int,
+        need_flag: bool = False,
+        need_first_closed: bool = True,
+    ) -> TeamData:
+        """Read one team: open tickets, tickets changed in the last lookback_days, sprints,
+        the next release and (for the forecast) the first closed ticket.
+
+        The query is one day wider than the window, because Jira uses the time zone of the
+        user profile. The rules filter the tickets exactly (status_report.metrics).
+        """
+        self.prepare(need_flag)
+        self.check_project(project_key)
+        sprints = self.active_sprints(project_key)
+        release = self.next_release(project_key, today)
+        types = ", ".join(f'"{name}"' for name in work_types)
+        since = today - timedelta(days=lookback_days + 1)
+        in_sprint = " OR sprint in openSprints()" if self._sprint_field else ""
+        jql = (
+            f'project = "{project_key}" AND issuetype in ({types}) '
+            f'AND (statusCategory != Done OR updated >= "{since:%Y-%m-%d}"{in_sprint}) '
+            "ORDER BY key"
+        )
+        fields = TICKET_FIELDS + [f for f in (self._flag_field, self._sprint_field) if f]
+        categories = self._status_category_map()
+        tickets = tuple(self._to_ticket(raw, categories) for raw in self._search(jql, fields))
+        first = self.first_closed(project_key, work_types) if need_first_closed else None
+        return TeamData(
+            key=project_key,
+            tickets=tickets,
+            active_sprints=sprints,
+            next_release=release,
+            first_closed=first,
+            read_at=read_at,
+            browse_url=self.browse_url,
+        )
+
+    def active_sprints(self, project_key: str) -> tuple[Sprint, ...]:
+        """Active sprints on the boards of the project. A board without sprints (Kanban) has none."""
+        boards = self._get("/rest/agile/1.0/board", {"projectKeyOrId": project_key, "maxResults": 50})
+        found: dict[int, Sprint] = {}
+        for board in boards.get("values", []):
+            try:
+                page = self._get(f"/rest/agile/1.0/board/{board['id']}/sprint", {"state": "active"})
+            except JiraError as error:
+                if error.status == 400:  # "The board does not support sprints"
+                    continue
+                raise
+            for raw in page.get("values", []):
+                sprint = _to_sprint(raw)
+                if sprint.state == "active":
+                    found[sprint.id] = sprint
+        return tuple(found[key] for key in sorted(found))
+
+    def next_release(self, project_key: str, today: date) -> Release | None:
+        """Spec R4.2: the unreleased fix version with the earliest release date on or after today."""
+        versions = self._get(f"/rest/api/3/project/{project_key}/versions")
+        dated = [
+            Release(v["name"], date.fromisoformat(v["releaseDate"]))
+            for v in versions
+            if not v.get("released") and not v.get("archived") and v.get("releaseDate")
+        ]
+        coming = [r for r in dated if r.release_date >= today]
+        return min(coming, key=lambda r: (r.release_date, r.name)) if coming else None
+
+    def first_closed(self, project_key: str, work_types: tuple[str, ...]) -> datetime | None:
+        """Time of the first closed ticket that is not cleaned up (spec R4.3), from the
+        Resolved date. None if the project has none."""
+        types = ", ".join(f'"{name}"' for name in work_types)
+        jql = (
+            f'project = "{project_key}" AND issuetype in ({types}) AND statusCategory = Done '
+            "ORDER BY resolutiondate ASC"
+        )
+        for number, raw in enumerate(self._search(jql, ["resolution", "resolutiondate"], changelog=False)):
+            if number >= PAGE_SIZE * FIRST_CLOSED_PAGES:
+                return None
+            f = raw["fields"]
+            if _resolution(f) in CLEANED_UP or not f.get("resolutiondate"):
+                continue
+            return _parse_datetime(f["resolutiondate"])
+        return None
+
+    # --- v1 reading: one week -------------------------------------------
 
     def fetch_tickets(
         self,
@@ -144,15 +250,12 @@ class JiraClient:
 
         return [self._to_ticket(raw, categories) for raw in self._search(jql, fields)]
 
-    def _search(self, jql: str, fields: list[str]):
+    def _search(self, jql: str, fields: list[str], changelog: bool = True):
         token = None
         while True:
-            params = {
-                "jql": jql,
-                "fields": ",".join(fields),
-                "expand": "changelog",
-                "maxResults": PAGE_SIZE,
-            }
+            params = {"jql": jql, "fields": ",".join(fields), "maxResults": PAGE_SIZE}
+            if changelog:
+                params["expand"] = "changelog"
             if token:
                 params["nextPageToken"] = token
             page = self._get("/rest/api/3/search/jql", params)
@@ -187,10 +290,19 @@ class JiraClient:
         return self._status_categories
 
     def _find_flag_field(self) -> str | None:
+        self._find_fields()
+        return self._flag_field
+
+    def _find_fields(self) -> None:
+        """The ids of the Flagged and Sprint fields (custom fields; the id differs per site)."""
+        if self._fields_found:
+            return
         for item in self._get("/rest/api/3/field"):
-            if item.get("name") == "Flagged":
-                return item["id"]
-        return None
+            if item.get("name") == "Flagged" and self._flag_field is None:
+                self._flag_field = item["id"]
+            if item.get("name") == "Sprint" and self._sprint_field is None:
+                self._sprint_field = item["id"]
+        self._fields_found = True
 
     def _cloud_id(self) -> str:
         try:
@@ -248,6 +360,9 @@ class JiraClient:
             labels=tuple(f.get("labels") or ()),
             flagged=bool(self._flag_field and f.get(self._flag_field)),
             history=tuple(history),
+            resolution=(f.get("resolution") or {}).get("name"),
+            sprints=tuple(_to_sprint(raw) for raw in (f.get(self._sprint_field) or ())
+                          if isinstance(raw, dict)) if self._sprint_field else (),
         )
 
     # --- the only way to call Jira: GET ---------------------------------
@@ -284,6 +399,20 @@ class JiraClient:
         raise JiraError(f"Jira is busy or unavailable after {MAX_TRIES} tries ({path}).")
 
 
+def _to_sprint(raw: dict) -> Sprint:
+    return Sprint(
+        id=int(raw["id"]),
+        name=raw.get("name") or "",
+        state=(raw.get("state") or "").lower(),
+        end=_parse_datetime(raw.get("endDate")),
+    )
+
+
+def _resolution(fields: dict) -> str:
+    name = (fields.get("resolution") or {}).get("name") or ""
+    return name.replace("\u2019", "'").strip().lower()
+
+
 def _retry_after(response) -> float | None:
     value = response.headers.get("Retry-After")
     try:
@@ -293,6 +422,10 @@ def _retry_after(response) -> float | None:
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
+    """Jira dates: "2026-10-20T09:00:00.000+0000"; sprint dates: "2026-10-20T09:00:00.000Z"."""
     if not value:
         return None
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f%z")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f%z")
+    except ValueError:
+        return datetime.fromisoformat(value)

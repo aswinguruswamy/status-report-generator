@@ -109,5 +109,6 @@ def load_week(path: Path) -> list[Ticket]:
             raw[name] = datetime.fromisoformat(raw[name]) if raw[name] else None
         raw["due_date"] = date.fromisoformat(raw["due_date"]) if raw["due_date"] else None
         raw["labels"] = tuple(raw["labels"])
+        raw["sprints"] = tuple(raw.get("sprints", ()))  # Random weeks have no sprints
         tickets.append(Ticket(**raw))
     return tickets
