@@ -75,3 +75,11 @@ def test_known_limits_name_the_12_weeks_and_the_open_speed_check():
     assert "needs 12 weeks" in limits
     assert "Not checked yet with real Jira: the speed of 10 teams (target under 15 seconds)" in " ".join(
         limits.split())
+
+
+def test_ac45_readme_shows_the_3_screenshots():
+    # Spec v1.4 SRG-R15.1: screenshots of the table, a team's details and the report.
+    for name in ("1-team-table.jpg", "2-team-details.jpg", "3-report.jpg"):
+        assert f"](docs/screenshots/{name})" in README
+        assert (ROOT / "docs" / "screenshots" / name).is_file(), name
+    assert "https://srg-app.streamlit.app" in README

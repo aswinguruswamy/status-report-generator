@@ -68,6 +68,22 @@ flowchart LR
 4. The forecast gives the 85% date to finish all open tickets, from the MCF simulation code.
 5. The tool writes the table as a Markdown report: `SRG_<date>_<hhmm>.md`.
 
+## Screenshots
+
+Made-up sample data, from the public demo.
+
+**The team table:** every team's colour, the reason, the sprint progress and the forecast.
+
+![The team table](docs/screenshots/1-team-table.jpg)
+
+**A team's details:** click a row to see its Black, Red and Amber tickets.
+
+![A team's details](docs/screenshots/2-team-details.jpg)
+
+**The report:** Generate report gives the same data as a Markdown file.
+
+![The report](docs/screenshots/3-report.jpg)
+
 ## Status rules (short form)
 
 Won't Do and Duplicate tickets are left out of every count. The **effective due date** is the

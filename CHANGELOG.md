@@ -5,7 +5,7 @@ the version in pyproject.toml to 2.0.0. The release workflow publishes that sect
 
 ## Unreleased (v2.0.0)
 
-SRG v2: one table for every team, a report on demand, and no AI (spec `specs/spec.md` v1.3).
+SRG v2: one table for every team, a report on demand, and no AI (spec `specs/spec.md` v1.4).
 Public demo with made-up data: https://srg-app.streamlit.app
 
 ### Stories in this release
@@ -19,6 +19,7 @@ Public demo with made-up data: https://srg-app.streamlit.app
 - S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to an MCF commit).
 - S8: The portfolio Markdown report `SRG_<yyyy-mm-dd>_<hhmm>.md` (as-of time, team table, reason per team, Black/Red/Amber tickets per team, "Sample data" in demo mode). `status-report` writes it (`--config`, `--output`, `--demo`). Removed: the v1 weekly report (Markdown and HTML), the weekly options and the v1 weekly code.
 - S9: The web page (Streamlit): the team table with every colour as a word, "as of hh:mm", a team's Black/Red/Amber tickets on a row click (Jira links for real data), Refresh (a failed refresh shows the error and "Last good read hh:mm"), Generate report (download), and "Sample data" in demo mode. `demo_app.py` is the keyless public demo.
+- S10: README with a "Try it" link to the public demo (https://srg-app.streamlit.app), screenshots of the table, a team's details and the report (in place of the video, spec v1.4), and current known limits.
 
 ### Verified
 
