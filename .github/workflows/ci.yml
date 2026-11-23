@@ -41,7 +41,7 @@ jobs:
       - name: Unit tests
         run: pytest
 
-  # The README tells users to install Python 3.12. The tool supports 3.11 and newer.
+  # The tool supports Python 3.11 and newer (README: "Python 3.11 or newer"). The job above uses 3.11.
   # 3.14: Streamlit Community Cloud runs the public demo on Python 3.14.
   # These jobs run the tests on the newer versions too (SRG-37).
   python-versions:

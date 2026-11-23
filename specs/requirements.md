@@ -1,6 +1,6 @@
 # SRG v2 – Requirements
 
-Version 1.3 · 2026-11-22 · Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (v1.1–v1.3: changes from his later answers)
+Version 1.4 · 2026-11-23 · Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (v1.1–v1.4: changes from his later answers)
 
 ---
 
@@ -77,7 +77,7 @@ Priority is my proposal. **You decide.** M = Must, S = Should.
 |---|---|---|
 | R13 | One settings file: the Jira projects and a team name for each, plus the v1 settings with their defaults (blocked method, priority names, ticket types, time zone). Check it at start; stop with a clear message if a value is wrong. | M |
 | R14 | Public demo with sample data. No Jira account needed. | M |
-| R15 | Record a short video (2 minutes or less) of the team table and the report; link it in the README and the portfolio. | M |
+| R15 | Show screenshots of the team table, a team's details and the report in the README, and link the public demo. | M |
 
 ## 6. How well it must work (non-functional requirements)
 
@@ -122,5 +122,6 @@ Priority is my proposal. **You decide.** M = Must, S = Should.
 | 1.1 | 2026-11-22 | From Aswin's answers in the spec review: team colour uses the v1 priority rule; planned date from the next Jira release beside the forecast; 5-week minimum; v1 settings kept; sub-tasks not counted. |
 | 1.2 | 2026-11-22 | Forecast needs 12 weeks of history (was 5) – Aswin's MCF trim decision. |
 | 1.3 | 2026-11-22 | Aswin: a recorded video beside the live demo (R15). |
+| 1.4 | 2026-11-23 | R15: README screenshots in place of the video (Aswin 2026-11-23, SH-5.5). |
 
 Every line traces to Aswin's answers in `clarify/SRG-clarify-log.md`.

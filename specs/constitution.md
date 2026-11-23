@@ -1,6 +1,6 @@
 # Constitution – MCF, SRG, RAID (v2)
 
-Version: 1.1 – 2026-11-22. Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = his demo decision, SH-4.4). Owner: Aswin Guruswamy.
+Version: 1.2 – 2026-11-23. Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = his demo decision, SH-4.4; 1.2 = screenshots, SH-5.5). Owner: Aswin Guruswamy.
 Every spec, plan and pull request must agree with these principles. A change to this file needs Aswin's approval and a new version line.
 
 ## Principles
@@ -33,7 +33,7 @@ Every spec, plan and pull request must agree with these principles. A change to 
 
 | ID | Shared item | Decision | Where |
 |---|---|---|---|
-| SH1 | Shared CI standard | Must | P12; RAID spec R17 (RAID is the weakest repo); MCF and SRG keep or reach the same standard |
+| SH1 | Shared CI standard (Python 3.11–3.14 since 2026-11-23) | Must | P12; RAID spec R17 (RAID is the weakest repo); MCF and SRG keep or reach the same standard |
 | SH2 | Model and prompt version in every AI output | Must | P4; MCF spec R4; RAID spec R10 (SRG has no AI) |
 | SH3 | AI test runs on each change to the prompt or model | Must | MCF spec R8; RAID spec R16 |
 | SH4 | Every bug gets a test first | Must | P12; RAID spec R19 |
@@ -44,7 +44,7 @@ Every spec, plan and pull request must agree with these principles. A change to 
 | SH9 | Tools feed each other | MCF → SRG: Must (MCF spec R6, SRG spec R4). RAID → SRG: later | |
 | SH10 | Run inside Jira or Teams, or as an MCP server | Won't (v3) | |
 | SH11 | Portfolio (multi-project) view | Must, as the SRG team table | SRG spec |
-| SH12 | Public demos keyless + a recorded video per tool | Must (SH-4.4). The AI key is only a GitHub secret for the build and tests. | MCF R10–R11, SRG R15, RAID R20 |
+| SH12 | Public demos keyless + README screenshots per tool (in place of a video, SH-5.5) | Must (SH-4.4, SH-5.5). The AI key is only a GitHub secret for the build and tests. | MCF R10–R11, SRG R15, RAID R20 |
 
 ## Governance
 - Approver: Aswin. Proposer: Claude.
@@ -58,3 +58,4 @@ Every spec, plan and pull request must agree with these principles. A change to 
 | 0.2 | 2026-11-22 | Checked against the approved specs: P3 covers a partial result (SRG); P4 model/prompt only where AI is used (SRG has none); P7 held-out set where AI finds facts (RAID), publish misses too; P8 fixed forecast seed and measured AI variation (RAID); P10 adds the portfolio-project rule (SH-3.1). Added the SH1–SH11 table. |
 | 1.0 | 2026-11-22 | Approved as is by Aswin. SH8 row updated to his PM-input decision (SH-4.2). |
 | 1.1 | 2026-11-22 | SH12 added: keyless demos + video per tool; AI key for the build only (Aswin, SH-4.4). |
+| 1.2 | 2026-11-23 | SH12: README screenshots in place of videos for all 3 tools (Aswin, SH-5.5). |
