@@ -207,3 +207,13 @@ def test_window_counts_cover_the_whole_project_not_only_the_sprint():
 
 def test_at_helper_is_local_time():
     assert at(0).tzinfo is ZONE
+
+
+def test_done_ticket_without_history_uses_the_resolved_date():  # S4 review
+    t = replace(ticket("BET-1", status="Done", history=[]), resolved=at(-2))
+    assert closed_in_window(t, window_start(NOW, TZ), NOW)
+
+
+def test_window_ends_at_the_read_time():  # S4 review
+    later = ticket("BET-1", status="Done", history=[move(0, "In Progress", "Done", hour=11)])
+    assert not closed_in_window(later, window_start(NOW, TZ), NOW)  # 11:00 is after 09:42
