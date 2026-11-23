@@ -102,11 +102,6 @@ def test_html_escapes_ticket_titles(tmp_path):
     assert "<script>" not in text and "&lt;script&gt;" in text
 
 
-def test_no_ai_option(tmp_path, capsys):
-    run(tmp_path, "--no-ai")
-    assert "AI summary: off" in capsys.readouterr().out
-
-
 # --- Errors and exit codes ----------------------------------------------------
 
 def test_jira_error_returns_error_code(tmp_path, capsys):
@@ -132,7 +127,7 @@ def test_help_lists_all_options(capsys):
         main(["--help"])
     assert stop.value.code == 0
     out = capsys.readouterr().out
-    for option in ["--project", "--week", "--output", "--format", "--no-ai", "--config"]:
+    for option in ["--project", "--week", "--output", "--format", "--config"]:
         assert option in out
 
 
@@ -168,31 +163,8 @@ def test_report_shows_project_status_matrix_and_ticket_status(tmp_path, capsys):
     assert "<h2>Priority matrix</h2>" in page and '<span class="st st-amber">Amber</span> Amber:' in page
 
 
-def test_report_has_the_ai_summary_when_the_ai_answers(tmp_path, capsys):
-    from test_ai import FakeClient as FakeAI
-
-    answer = {
-        "summary": "The project is Amber. SRG-1 is due soon and not started. No ticket was closed.",
-        "next_week": ["Start SRG-1."],
-    }
-    fake = FakeAI(answer)
-    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--week", "2026-10-19", "--format", "md"]
-    assert main(argv, client=FakeClient([ticket()]), today=date(2026, 10, 22), ai_client=fake) == EXIT_OK
-    text = (tmp_path / "SRG-2026-W43.md").read_text()
-    assert "## Executive summary\n\nThe project is Amber." in text
-    assert "_Not available" not in text and "- Start SRG-1." in text
-    assert "The rules set the status, not the AI" in text
-    assert "AI summary: done (900 + 120 tokens)" in capsys.readouterr().out
-
-
-def test_ai_answer_with_unknown_key_is_removed_with_a_warning(tmp_path):
-    from test_ai import FakeClient as FakeAI
-
-    answer = {"summary": "The project is Amber. SRG-77 is late. One more point.",
-              "next_week": ["Fix SRG-77."]}
-    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--week", "2026-10-19", "--format", "md"]
-    main(argv, client=FakeClient([ticket()]), today=date(2026, 10, 22), ai_client=FakeAI(answer))
-    text = (tmp_path / "SRG-2026-W43.md").read_text()
-    assert "## Executive summary\n\n_Not available in this report. See Warnings._" in text
-    assert "No AI summary in this report. The AI summary names tickets that are not in the input: SRG-77." in text
-
+def test_no_ai_option_is_gone(capsys):
+    # v2 spec §2: no AI in SRG v2.
+    with pytest.raises(SystemExit):
+        main(["--help"])
+    assert "--no-ai" not in capsys.readouterr().out

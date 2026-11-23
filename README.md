@@ -3,7 +3,10 @@
 [![CI](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml)
 
 A Python tool that reads one Jira project and writes a weekly status report. Fixed rules set
-the RAG status. The Claude API writes a short executive summary, and the tool checks it.
+the RAG status. There is no AI in the tool: code sets every number and colour.
+
+**v2 is in progress** (spec: [`specs/spec.md`](specs/spec.md)): one table for many teams, a web
+page and a report on demand. The v1 AI summary is removed (it stays in the v1.0.0 release).
 
 **Sample report** (made-up data): [Markdown](examples/DEMO-2026-W43.md) ·
 [HTML](examples/DEMO-2026-W43.html)
@@ -24,8 +27,7 @@ writes the summary. This takes time. Two managers can give the same week differe
 An AI tool alone can write a good text, but it can also make up a status or a fact.
 
 This tool makes the report in less than 2 minutes. Rules set the status, so the same week
-always gets the same colour. The AI only explains the facts, and the tool removes an AI text
-that breaks a rule.
+always gets the same colour.
 
 ## Users
 
@@ -40,12 +42,7 @@ flowchart LR
     J[(Jira Cloud)] -->|read only| C[Jira client]
     C --> M[Weekly numbers<br/>closed, opened, open,<br/>blocked, overdue]
     M --> R[Status rules<br/>ticket: Black, Red, Amber, Green<br/>project: Red, Amber, Green]
-    R --> A[AI input<br/>facts only, no names]
-    A --> L[Claude API]
-    L --> K{Answer checks}
-    K -->|pass| W[Report writer]
-    K -->|fail: warning| W
-    R --> W
+    R --> W[Report writer]
     W --> F[Markdown and HTML files]
 ```
 
@@ -53,11 +50,7 @@ flowchart LR
    changes Jira.
 2. It counts the numbers at the end of the week, from the status history.
 3. Rules from `config.yaml` give each open ticket a status, then give the project a status.
-4. The AI gets only the facts: numbers, statuses, ticket keys, priorities, and titles (titles
-   can be hidden). It never gets names, email addresses, descriptions, or comments.
-5. The tool checks the AI answer. If the answer breaks a rule, the tool removes it and adds a
-   warning. If the AI is not available, the tool still makes the full report.
-6. The tool writes the report as Markdown and HTML.
+4. The tool writes the report as Markdown and HTML.
 
 ## Status rules (short form)
 
@@ -86,7 +79,7 @@ The full rules, with examples and special cases: [docs/RAG-Rules.pdf](docs/RAG-R
 2. Make a virtual environment: `python3.12 -m venv .venv`, then `source .venv/bin/activate`.
 3. Run `pip install -r requirements.txt`, then `pip install -e .`.
 4. Copy `.env.example` to `.env` and add your values: the Jira site, your email, a Jira API
-   token, and a Claude API key.
+   token.
 5. Change `config.yaml` for your Jira project.
 
 **Caution:** Never commit the `.env` file. It contains your secrets. Git ignores it, and the
@@ -97,7 +90,7 @@ CI scans each change for secrets.
 ```
 status-report                          # last full week, settings from config.yaml
 status-report --week 2026-10-19        # the week that contains this day
-status-report --project SRG --format both --no-ai
+status-report --project SRG --format both
 status-report --help                   # all options
 ```
 
@@ -107,16 +100,14 @@ status-report --help                   # all options
 | `--week` | A day in the week to report (YYYY-MM-DD). Default: the last full week. |
 | `--format` | `md`, `html`, or `both`. Default: `config.yaml`. |
 | `--output` | Folder for the report. Default: `config.yaml`. |
-| `--no-ai` | Make the report without the AI summary. No API call. |
 | `--config` | Path to `config.yaml`. |
 
 The report goes into the `output` folder. Git ignores this folder. The file name has the
 project key and the ISO week, for example `output/SRG-2026-W43.md`. For the current week,
 the numbers are the state now, not at the end of the week.
 
-Both files have the same sections and data, in this order: project status, executive
-summary, key numbers, priority matrix, blocked tickets, overdue tickets, closed this week,
-next week, warnings, and all tickets. Each status is a colour mark and a word. The HTML
+Both files have the same sections and data, in this order: project status, key numbers,
+priority matrix, blocked tickets, overdue tickets, closed this week, warnings, and all tickets. Each status is a colour mark and a word. The HTML
 report is one file with no external links. It is easy to read on a phone and prints
 clearly in black and white.
 
@@ -136,27 +127,13 @@ clearly in black and white.
 | `ticket_status.amber_window_days` | `2` | Amber: due within this many days... |
 | `ticket_status.amber_status_category` | `To Do` | ...and still in this status category. |
 | `project_status.high_priorities` | `[P1, P2]` | Priorities that make the project Red. |
-| `ai.enabled` | `true` | Make the AI summary. |
-| `ai.model` | `claude-sonnet-5-5` | The Claude model. |
-| `ai.max_tokens_per_run` | `8000` | Cost limit for each run, input and output tokens. |
-| `ai.hide_titles_from_ai` | `false` | `true`: the AI never gets ticket titles. |
 | `output.folder` | `output` | Folder for the reports. |
 | `output.formats` | `[markdown, html]` | The formats to write. |
-
-## Cost of the AI summary
-
-In the real run against this project (34 tickets), one summary used 2,679 tokens: 2,543 input
-and 136 output. With the Claude Sonnet 5.5 prices in October 2026 ($2 for each million input
-tokens, $10 for each million output tokens), one run costs less than US$0.01. The tool never sends more than the `max_tokens_per_run`
-limit (8,000 tokens), and the answer can use at most 2,000 of them (thinking and text). At that
-limit, one run costs less than US$0.04. Prices change: see
-[Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
 ## Tests
 
 ```
-pytest                                  # all tests, no API calls (about 5 seconds)
-python -m status_report.evaluation      # AI evaluation set: 6 real Claude API calls
+pytest                                  # all tests, no Jira calls (about 5 seconds)
 python scripts/make_sample.py           # make the sample report again after a layout change
 ```
 
@@ -165,19 +142,13 @@ python scripts/make_sample.py           # make the sample report again after a l
   special characters, empty weeks, more than 100 tickets. A failing week is saved in
   `tests/regressions/` as a permanent test.
 - **Format tests** check that the Markdown and HTML reports have the same sections and data.
-- **AI guardrail tests** try to trick each answer check: a key that is not in the input, a
-  changed or negated status, soft words in a Red week.
-- **AI evaluation set** (`eval/samples/`) checks the quality of the real AI summary: a red, an
-  amber, a green, an empty week, a week with hidden titles, and a week with quotes and braces in
-  the titles. Run it after each change to the
-  prompt or the model. It shows the AI text for each failed sample.
 - **CI** (GitHub Actions) runs the secret scan, the style check, and all tests on Python 3.11,
   3.12, and 3.13 for each pull request.
 
 ## Project documents
 
 The [docs/](docs/) folder has PDF copies of the project's Confluence pages at v1.0.0: charter,
-Decision Log, RAID Log, status rules, AI guardrails, Definition of Done, and the sprint reviews.
+Decision Log, RAID Log, status rules, AI guardrails (v1 only), Definition of Done, and the sprint reviews.
 
 ## License
 

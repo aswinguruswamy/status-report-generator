@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (v2.0.0)
+
+SRG v2 (spec `specs/spec.md` v1.3).
+
+- S1: The AI summary is removed: `ai.py`, `evaluation.py`, `eval/`, the `ai:` settings and the `anthropic` package (spec §2 non-goals).
+
 ## v1.0.0 (2026-10-24)
 
 The first release of the Weekly Status Report Generator.

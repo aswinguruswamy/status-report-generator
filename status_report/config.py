@@ -34,10 +34,6 @@ class Config:
     amber_window_days: int
     amber_status_category: str  # Status category for amber (D22), not a status name
     high_priorities: tuple[str, ...]
-    ai_enabled: bool
-    ai_model: str
-    max_tokens_per_run: int
-    hide_titles_from_ai: bool
     output_folder: str
     output_formats: tuple[str, ...]
     warnings: list[str] = field(default_factory=list, compare=False)
@@ -234,10 +230,6 @@ class _Checker:
             amber_window_days=self.integer("ticket_status", "amber_window_days", minimum=0),
             amber_status_category=self.amber_category(),
             high_priorities=self.high_priorities(),
-            ai_enabled=self.boolean("ai", "enabled"),
-            ai_model=self.text("ai", "model"),
-            max_tokens_per_run=self.integer("ai", "max_tokens_per_run", minimum=1),
-            hide_titles_from_ai=self.boolean("ai", "hide_titles_from_ai"),
             output_folder=self.text("output", "folder"),
             output_formats=self.output_formats(),
         )

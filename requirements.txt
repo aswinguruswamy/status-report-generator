@@ -2,7 +2,6 @@
 requests==2.34.2
 PyYAML==6.0.3
 python-dotenv==1.2.4
-anthropic==2.9.0
 
 # Development
 pytest==9.2.0

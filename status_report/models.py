@@ -26,7 +26,7 @@ class Ticket:
     status: str
     status_category: str  # "To Do", "In Progress", or "Done"
     priority: str | None
-    assignee: str | None  # Shown in the report. Never sent to the AI (D28).
+    assignee: str | None  # Shown in the report
     due_date: date | None
     created: datetime
     done_date: datetime | None  # Date of the last move into a Done status (D19)

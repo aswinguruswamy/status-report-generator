@@ -11,7 +11,6 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from status_report.ai import AIError, build_ai_input, make_client, summarize
 from status_report.config import ConfigError, load_config
 from status_report.jira_client import JiraError
 from status_report.metrics import calculate, tickets_in_week
@@ -53,12 +52,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         choices=sorted(FORMATS),
         help="Report format: md, html, or both. Default: config.yaml.",
     )
-    parser.add_argument("--no-ai", action="store_true", help="Make the report without the AI summary.")
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml.")
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None, client: TicketSource | None = None, today: date | None = None, ai_client=None) -> int:
+def main(argv: list[str] | None = None, client: TicketSource | None = None, today: date | None = None) -> int:
     args = parse_args(argv)
     try:
         config = load_config(args.config)
@@ -92,24 +90,10 @@ def main(argv: list[str] | None = None, client: TicketSource | None = None, toda
         for warning in status.warnings:
             print(f"    WARNING: {warning}")
 
-        use_ai = config.ai_enabled and not args.no_ai
-        summary, warnings = None, list(status.warnings)
-        if use_ai:
-            print("    Writing the AI summary...")
-            try:
-                ai_input = build_ai_input(week_tickets, metrics, status, config)
-                summary = summarize(ai_input, config, ai_client or make_client())
-                print(f"    AI summary: done ({summary.input_tokens} + {summary.output_tokens} tokens)")
-            except AIError as error:
-                warnings.append(f"No AI summary in this report. {error}")
-                print(f"    WARNING: {warnings[-1]}")
-        else:
-            print("    AI summary: off")
-
         print("3/3 Writing the report...")
         paths = write_report(
             week_tickets, metrics, status, project, folder, formats,
-            summary=summary, warnings=warnings, generated=today,
+            warnings=status.warnings, generated=today,
         )
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
