@@ -62,3 +62,16 @@ def test_readme_has_no_ai_setup():
     # v2 spec §2: no AI in SRG v2, so no AI key and no AI cost section.
     assert "ANTHROPIC" not in README and "Claude API" not in README
     assert "--no-ai" not in README
+
+
+def test_readme_links_the_public_demo_under_the_title():
+    # SH12: keyless public demo per tool.
+    top = README.split("## ", 1)[0]
+    assert "[srg-app.streamlit.app](https://srg-app.streamlit.app)" in top
+
+
+def test_known_limits_name_the_12_weeks_and_the_open_speed_check():
+    limits = README.split("## Known limits", 1)[1].split("\n## ", 1)[0]
+    assert "needs 12 weeks" in limits
+    assert "Not checked yet with real Jira: the speed of 10 teams (target under 15 seconds)" in " ".join(
+        limits.split())

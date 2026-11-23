@@ -2,10 +2,14 @@
 
 [![CI](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml)
 
+**Try it:** [srg-app.streamlit.app](https://srg-app.streamlit.app) – the public demo with
+made-up teams. No account, no Jira, no token.
+
 A Python tool that answers "how are the teams doing?" at any time. It reads every team's
 Jira project and shows one table: the colour of each team, the rule behind the colour, the
-sprint progress and a forecast date. On demand it writes the same data as a Markdown report.
-There is no AI in the tool: code sets every number, colour and date.
+sprint progress and a forecast date. Click a team to see its blocked, overdue and at-risk
+tickets. On demand it writes the same data as a Markdown report. There is no AI in the tool:
+code sets every number, colour and date, and the same data always gives the same result.
 
 Spec: [`specs/spec.md`](specs/spec.md) (v2). The v1 weekly report with an AI summary stays in the
 v1.0.0 release.
@@ -22,6 +26,10 @@ v1.0.0 release.
 - The forecast needs 12 weeks (84 days) from the first closed ticket. A younger team shows
   "Not enough history yet – needs 12 weeks".
 - "First closed ticket" uses the Jira Resolved date.
+- Not checked yet with real Jira: the speed of 10 teams (target under 15 seconds) and a ticket
+  key that opens Jira. The demo opens in under 1 second in the tests.
+- The demo uses recorded, made-up Jira data with a fixed read time (2026-12-01 09:42), so its
+  dates do not move.
 
 ## The problem
 
