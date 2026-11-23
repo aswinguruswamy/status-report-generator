@@ -1,22 +1,26 @@
-# Status Report Generator - configuration
-# This file is the source of the rules (D11).
-# The Confluence page "RAG Rules" explains them.
+# Status Report Generator v2 - settings (spec SRG-R13.1)
+# One row for each team: the Jira project key and the team name.
+# Change the example teams below to your own projects.
+teams:
+  - key: ALP
+    name: Alpha
+  - key: BET
+    name: Beta
 
-jira:
-  project_key: SRG                 # Jira project to read
-  timezone: America/Toronto        # The week is Monday to Sunday in this time zone
+# All settings below are optional. The value shown is the default.
 
-# Work types that the tool counts (D23). Epics and subtasks are not counted.
-work_types:
-  - Story
-  - Task
-  - Bug
+# Time zone for "today", the 14-day window and the "as of" time.
+# Default: the time zone of this computer.
+timezone: America/Toronto
 
-# Match of Jira priority names to P1 to P5 (D21).
+# Work types that the tool counts. Epics and sub-tasks are not counted.
+work_types: [Story, Task, Bug]
+
+# Match of Jira priority names to P1 to P5. P1 and P2 are "high priority".
 # Use a list if your team has more than one name for a level, for example:
 #   P1: [Highest, Blocker]
-# A ticket with a priority that is not here goes in the "Unmapped" row,
-# and the report shows a warning.
+# A ticket with a priority that is not here is not high priority, and the tool
+# shows a warning with the ticket key.
 priority_map:
   P1: Highest
   P2: High
@@ -24,7 +28,7 @@ priority_map:
   P4: Low
   P5: Lowest
 
-# How the tool finds a blocked ticket (D14). Use one or more of:
+# How the tool finds a blocked ticket. Use one or more of:
 #   status - the ticket is in the status named in blocked_status_name
 #   flag   - the ticket has the Jira flag
 #   label  - the ticket has the label named in blocked_label
@@ -32,16 +36,11 @@ blocked_method: [status]
 blocked_status_name: Blocked
 blocked_label: blocked
 
-# Ticket status rules (D21, D22).
-ticket_status:
-  amber_window_days: 2             # Amber: due within this many days...
-  amber_status_category: To Do     # ...and still in this status category (D22).
-                                   # A category works for each team's status names.
+# Amber: due within this many days and not started (status category To Do).
+amber_window_days: 2
 
-# Project status rules (D21).
-project_status:
-  high_priorities: [P1, P2]        # Red if one of these is red or black
+# Show the 85% forecast date for each team (needs 12 weeks of history).
+forecast: true
 
-output:
-  folder: output                   # Excluded in .gitignore
-  formats: [markdown, html]
+# Folder for the reports. Git ignores it.
+output_folder: output
