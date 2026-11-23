@@ -110,7 +110,7 @@ def local_timezone() -> str:
 def _valid_zone(name: str) -> bool:
     try:
         ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError):
+    except (ZoneInfoNotFoundError, ValueError, OSError):
         return False
     return True
 
@@ -209,20 +209,30 @@ class _Checker:
         teams = []
         for number, item in enumerate(raw):
             where = ("teams", number)
-            if not isinstance(item, dict) or not item.get("key") or not item.get("name"):
+            raw_key = item.get("key") if isinstance(item, dict) else None
+            raw_name = item.get("name") if isinstance(item, dict) else None
+            if isinstance(raw_key, bool):  # YAML reads YES, NO, ON and OFF as true/false
+                raise self.fail(
+                    where, f"team {number + 1}: put the project key in quotes, for example key: \"NO\"."
+                )
+            if (
+                not isinstance(raw_key, str) or not raw_key.strip()
+                or not isinstance(raw_name, (str, int)) or isinstance(raw_name, bool)
+                or not str(raw_name).strip()
+            ):
                 raise self.fail(
                     where,
                     f"team {number + 1} needs a project key and a team name, "
                     "for example '- {key: ALP, name: Alpha}'.",
                 )
-            key = str(item["key"]).strip().upper()
+            key = raw_key.strip().upper()
             if not PROJECT_KEY.match(key):
                 raise self.fail(
                     where,
                     f"'{item['key']}' is not a Jira project key. Use the key from the ticket "
                     "numbers, for example ALP for ALP-12.",
                 )
-            teams.append(Team(key=key, name=str(item["name"]).strip()))
+            teams.append(Team(key=key, name=str(raw_name).strip()))
         for key in dict.fromkeys(t.key for t in teams):
             count = sum(1 for t in teams if t.key == key)
             if count > 1:
