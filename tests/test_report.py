@@ -12,12 +12,10 @@ from datetime import date
 from test_metrics import CONFIG, at, change, ticket
 from test_random import _table_rows_complete
 
-from status_report.ai import Summary
 from status_report.metrics import calculate, tickets_in_week
 from status_report.project import project_status
 from status_report.report import (
     MD_SECTIONS,
-    NOT_AVAILABLE,
     _md_cell,
     report_name,
     to_markdown,
@@ -27,11 +25,11 @@ from status_report.report import (
 START, END = date(2026, 10, 19), date(2026, 10, 25)
 
 
-def report(title: str, summary: Summary | None = None) -> str:
+def report(title: str) -> str:
     tickets = [replace(ticket("SRG-1"), title=title)]
     metrics = calculate(tickets, CONFIG, START, END)
     status = project_status(tickets, metrics, CONFIG)
-    return to_markdown(tickets, metrics, status, "SRG", summary=summary)
+    return to_markdown(tickets, metrics, status, "SRG")
 
 
 def ticket_row(markdown: str) -> str:
@@ -58,25 +56,12 @@ def test_quotes_and_unicode_stay_as_they_are():
     assert _md_cell("Quote \" and ' — Ünïcødé ✓") == "Quote \" and ' — Ünïcødé ✓"
 
 
-def test_ai_summary_and_next_week_are_safe_too():
-    summary = Summary(
-        text="The project is Red.\nSRG-1 is <b>blocked</b>. One closed.",
-        next_week=("Free SRG-1 <img src=x>",),
-    )
-    markdown = report("Title", summary)
-    assert "<b>" not in markdown and "<img" not in markdown
-    assert "The project is Red. SRG-1 is &lt;b&gt;blocked&lt;/b&gt;. One closed." in markdown
-
-
 def test_check_finds_a_broken_row():
     assert not _table_rows_complete("| A | B |\n|---|---|\n| 1 | 2 | 3 |")
     assert _table_rows_complete("| A | B |\n|---|---|\n| 1 \\| x | 2 |")
 
 
 # --- Markdown layout (SRG-27, D45) ------------------------------------------------------
-
-SUMMARY = Summary("The project is Red. SRG-1 is blocked. SRG-2 is overdue.", ("Free SRG-1.",))
-
 
 def red_week():
     tickets = [
@@ -93,9 +78,9 @@ def red_week():
     return week, metrics, project_status(week, metrics, CONFIG)
 
 
-def md(summary=SUMMARY, **kwargs):
+def md(**kwargs):
     week, metrics, status = red_week()
-    return to_markdown(week, metrics, status, "SRG", summary, generated=date(2026, 10, 26), **kwargs)
+    return to_markdown(week, metrics, status, "SRG", generated=date(2026, 10, 26), **kwargs)
 
 
 def section(text: str, title: str) -> str:
@@ -140,16 +125,6 @@ def test_empty_lists_say_none():
     text = to_markdown(tickets, metrics, project_status(tickets, metrics, CONFIG), "SRG")
     for title in ("Blocked tickets", "Overdue tickets", "Closed this week"):
         assert section(text, title).strip() == "None."
-
-
-def test_summary_and_next_week_say_not_available_in_one_line():
-    text = md(summary=None)
-    assert section(text, "Executive summary").strip() == NOT_AVAILABLE
-    assert section(text, "Next week").strip() == NOT_AVAILABLE
-
-
-def test_next_week_comes_from_the_ai_summary():
-    assert section(md(), "Next week").strip() == "- Free SRG-1."
 
 
 def test_file_name_has_project_and_iso_week(tmp_path):

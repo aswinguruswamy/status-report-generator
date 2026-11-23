@@ -5,7 +5,7 @@ The project status is only Red, Amber, or Green. Black counts as Red here.
   Amber: one or more other tickets are Red or Black, or one or more high-priority
          tickets are Amber, or the team closed fewer tickets than it opened.
   Green: none of the above.
-The rules set the status. The AI never sets or changes it (D02).
+Only these rules set the status (v2 spec SRG-R5.1). There is no AI in SRG v2.
 """
 
 from __future__ import annotations

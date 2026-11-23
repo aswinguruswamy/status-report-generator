@@ -11,7 +11,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 def test_readme_has_the_required_parts():
     for heading in ("The problem", "Users", "How it works", "Status rules (short form)", "Setup",
-                    "How to run", "Config options", "Cost of the AI summary", "Tests",
+                    "How to run", "Config options", "Tests",
                     "Known limits", "Project documents"):
         assert f"## {heading}" in README, heading
     assert "team-managed" in README and "```mermaid" in README
@@ -56,3 +56,9 @@ def test_contributing_rules_exist():
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     for words in ("specs/", "test first", "bug", "CI"):
         assert words in text, words
+
+
+def test_readme_has_no_ai_setup():
+    # v2 spec §2: no AI in SRG v2, so no AI key and no AI cost section.
+    assert "ANTHROPIC" not in README and "Claude API" not in README
+    assert "--no-ai" not in README

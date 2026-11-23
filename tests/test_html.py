@@ -10,16 +10,16 @@ from html.parser import HTMLParser
 import pytest
 from generator import WEEK_END, WEEK_START, make_week
 from test_metrics import CONFIG
-from test_report import SUMMARY, red_week
+from test_report import red_week
 
 from status_report.metrics import calculate, tickets_in_week
 from status_report.project import project_status
 from status_report.report import MD_SECTIONS, to_html, to_markdown
 
 
-def page(summary=SUMMARY, week=None):
+def page(week=None):
     week_tickets, metrics, status = week or red_week()
-    return to_html(week_tickets, metrics, status, "SRG", summary, generated=date(2026, 10, 26))
+    return to_html(week_tickets, metrics, status, "SRG", generated=date(2026, 10, 26))
 
 
 class Cells(HTMLParser):
@@ -66,15 +66,13 @@ def test_same_sections_in_the_same_order_as_markdown():
 
 def test_same_table_data_as_markdown():
     week_tickets, metrics, status = red_week()
-    markdown = to_markdown(week_tickets, metrics, status, "SRG", SUMMARY)
+    markdown = to_markdown(week_tickets, metrics, status, "SRG")
     assert parse(page()).cells == md_cells(markdown)
 
 
 def test_same_text_as_markdown():
     text = page()
-    for part in (SUMMARY.text, "Free SRG-1.", "Week 43: 2026-10-19 to 2026-10-25 · Report date: 2026-10-26",
-                 "Written by AI from the facts in this report."):
-        assert part in text
+    assert "Week 43: 2026-10-19 to 2026-10-25 · Report date: 2026-10-26" in text
 
 
 def test_one_file_with_no_external_links():
@@ -116,11 +114,6 @@ def test_special_characters_show_and_cannot_break_the_page():
     parsed = parse(text)
     starts = sum(1 for tag, _ in parsed.tags if tag == "tr")
     assert starts == text.count("</tr>")  # Each row is closed: the structure is intact
-
-
-def test_not_available_text_without_ai():
-    text = page(summary=None)
-    assert text.count("<p class='note'>Not available in this report. See Warnings.</p>") == 2
 
 
 def _norm(cells):

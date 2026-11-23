@@ -2,8 +2,8 @@
 
 build_sections() makes the content once. to_markdown (SRG-27, D45) and to_html
 (SRG-28, D46) only format it, so both files have the same sections and data:
-header, project status, executive summary, key numbers, priority matrix, blocked,
-overdue, closed this week, next week, then warnings and all tickets.
+header, project status, key numbers, priority matrix, blocked, overdue,
+closed this week, then warnings and all tickets.
 Each status is a colour mark and a word, never a colour only (D21, accessibility).
 File name: <project>-<ISO year>-W<ISO week>, for example SRG-2026-W43.md.
 """
@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from status_report.ai import Summary
 from status_report.metrics import WeekMetrics
 from status_report.models import Ticket
 from status_report.project import LEVELS, ProjectStatus
@@ -30,14 +29,11 @@ NUMBER_LABELS = {
     "overdue": "Overdue",
 }
 MD_SECTIONS = (
-    "Project status", "Executive summary", "Key numbers", "Priority matrix", "Blocked tickets",
-    "Overdue tickets", "Closed this week", "Next week", "All tickets",
+    "Project status", "Key numbers", "Priority matrix", "Blocked tickets",
+    "Overdue tickets", "Closed this week", "All tickets",
 )
 MARKS = {"Black": "⚫", "Red": "🔴", "Amber": "🟠", "Green": "🟢", "Done": "✅"}
-NOT_AVAILABLE_TEXT = "Not available in this report. See Warnings."
-NOT_AVAILABLE = f"_{NOT_AVAILABLE_TEXT}_"  # In Markdown
 NONE = "None."
-AI_NOTE = "Written by AI from the facts in this report. The rules set the status, not the AI (D02)."
 
 
 def _ticket_rows(tickets: list[Ticket], status: ProjectStatus) -> list[tuple[str, ...]]:
@@ -118,7 +114,7 @@ def _closed_list(tickets: list[Ticket], metrics: WeekMetrics) -> list[tuple[str,
 # --- Markdown -------------------------------------------------------------------
 
 def _md_text(value: object) -> str:
-    """Text from Jira or the AI, safe for one Markdown line (SRG-35).
+    """Text from Jira, safe for one Markdown line (SRG-35).
 
     "<", ">", and "&" become HTML entities, so raw HTML shows as text.
     Line breaks become spaces, so a table row stays on one line.
@@ -154,7 +150,6 @@ class Section:
     rows: tuple[tuple, ...] = ()
     items: tuple[str, ...] = ()  # A list
     text: tuple[str, ...] = ()  # Paragraphs
-    note: str = ""  # Shown in italics after the text
     empty: str = ""  # Shown when there is no table row, item, or text
 
 
@@ -162,7 +157,6 @@ def build_sections(
     tickets: list[Ticket],
     metrics: WeekMetrics,
     status: ProjectStatus,
-    summary: Summary | None,
     warnings: list[str],
 ) -> list[Section]:
     """The report content, in the agreed order (D45). The renderers only format it."""
@@ -171,8 +165,6 @@ def build_sections(
 
     sections = [
         Section("Project status", text=(status.reason,)),
-        Section("Executive summary", text=(summary.text,) if summary else (),
-                note=AI_NOTE if summary else "", empty=NOT_AVAILABLE_TEXT),
         Section("Key numbers", ("Number", "Value"), tuple(_number_rows(metrics))),
         Section("Priority matrix", ("Status", *LEVELS), marks(_matrix_rows(status), 0)),
         Section("Blocked tickets", ("Key", "Title", "Owner", "Priority", "Days blocked"),
@@ -181,8 +173,6 @@ def build_sections(
                 tuple(_overdue_list(tickets, metrics)), empty=NONE),
         Section("Closed this week", ("Key", "Title", "Type", "Owner", "Priority"),
                 tuple(_closed_list(tickets, metrics)), empty=NONE),
-        Section("Next week", items=tuple(summary.next_week) if summary else (),
-                empty=NOT_AVAILABLE_TEXT),
     ]
     if warnings:
         sections.append(Section("Warnings", items=tuple(warnings)))
@@ -209,7 +199,6 @@ def to_markdown(
     metrics: WeekMetrics,
     status: ProjectStatus,
     project: str,
-    summary: Summary | None = None,
     warnings: list[str] | None = None,
     generated: date | None = None,
 ) -> str:
@@ -217,7 +206,7 @@ def to_markdown(
     warnings = status.warnings if warnings is None else warnings
     title, header = _header(project, metrics, generated)
     lines = [f"# {_md_text(title)}", "", header]
-    for sec in build_sections(tickets, metrics, status, summary, warnings):
+    for sec in build_sections(tickets, metrics, status, warnings):
         lines += ["", f"## {sec.title}", ""]
         if sec.title == "Project status":
             lines.append(
@@ -230,9 +219,7 @@ def to_markdown(
         body += [f"- {_md_text(i)}" for i in sec.items]
         for paragraph in sec.text:
             body += [_md_text(paragraph)]
-        if sec.note:
-            body += ["", f"_{sec.note}_"]
-        lines += body or [f"_{sec.empty}_" if sec.empty == NOT_AVAILABLE_TEXT else sec.empty]
+        lines += body or [sec.empty]
     return "\n".join(lines) + "\n"
 
 
@@ -287,7 +274,6 @@ def to_html(
     metrics: WeekMetrics,
     status: ProjectStatus,
     project: str,
-    summary: Summary | None = None,
     warnings: list[str] | None = None,
     generated: date | None = None,
 ) -> str:
@@ -300,7 +286,7 @@ def to_html(
         f"<title>{html.escape(title)}</title><style>{CSS}</style></head><body>",
         f"<h1>{html.escape(title)}</h1><p class='meta'>{html.escape(header)}</p>",
     ]
-    for sec in build_sections(tickets, metrics, status, summary, warnings):
+    for sec in build_sections(tickets, metrics, status, warnings):
         parts.append(f"<h2>{html.escape(sec.title)}</h2>")
         if sec.title == "Project status":
             parts.append(f"<p class='status'>{_badge(status.status)} {html.escape(status.reason)}</p>")
@@ -311,8 +297,6 @@ def to_html(
         if sec.items:
             body.append("<ul>" + "".join(f"<li>{html.escape(i)}</li>" for i in sec.items) + "</ul>")
         body += [f"<p>{html.escape(t)}</p>" for t in sec.text]
-        if sec.note:
-            body.append(f"<p class='note'>{html.escape(sec.note)}</p>")
         parts += body or [f"<p class='note'>{html.escape(sec.empty)}</p>"]
     parts.append("</body></html>\n")
     return "".join(parts)
@@ -325,13 +309,12 @@ def write_report(
     project: str,
     folder: Path,
     formats: tuple[str, ...],
-    summary: Summary | None = None,
     warnings: list[str] | None = None,
     generated: date | None = None,
 ) -> list[Path]:
     folder.mkdir(parents=True, exist_ok=True)
     base = folder / report_name(project, metrics.start)
-    args = (tickets, metrics, status, project, summary, warnings, generated)
+    args = (tickets, metrics, status, project, warnings, generated)
     paths = []
     if "markdown" in formats:
         path = base.with_suffix(".md")

@@ -10,23 +10,19 @@ A test checks that the files in examples/ are the same as the output of this scr
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from status_report.ai import build_ai_input, check_answer
 from status_report.config import load_config
 from status_report.metrics import calculate, tickets_in_week
 from status_report.models import StatusChange, Ticket
 from status_report.project import project_status
-from status_report.report import AI_NOTE, report_name, to_html, to_markdown
+from status_report.report import report_name, to_html, to_markdown
 
 ROOT = Path(__file__).resolve().parent.parent
 FOLDER = ROOT / "examples"
 START, END = date(2026, 10, 19), date(2026, 10, 25)
 GENERATED = date(2026, 10, 26)
-AI_NOTE_SAMPLE = ("Sample text, written for this example in the form of an AI answer. In a real "
-                  "report, the AI writes it from the facts. The rules set the status, not the AI (D02).")
 CATEGORY = {"To Do": "To Do", "In Progress": "In Progress", "Blocked": "In Progress",
             "Review": "In Progress", "Done": "Done"}
 
@@ -73,29 +69,18 @@ def tickets() -> list[Ticket]:
     ]
 
 
-SUMMARY_ANSWER = {
-    "summary": "The project is Red. DEMO-101 has the P1 priority and is blocked. DEMO-102 is "
-               "overdue, and DEMO-104 is blocked. The team closed 3 tickets and opened 3.",
-    "next_week": ["Remove the blocker on DEMO-101.", "Finish DEMO-102.",
-                  "Remove the blocker on DEMO-104."],
-}
-
-
 def build() -> dict[str, str]:
     config = load_config(ROOT / "config.yaml")
     all_tickets = tickets()
     metrics = calculate(all_tickets, config, START, END)
     week = tickets_in_week(all_tickets, metrics)
     status = project_status(week, metrics, config)
-    ai_input = build_ai_input(week, metrics, status, config)
-    # The sample text passes the same checks as a real AI answer (D36, D41, D44).
-    summary = check_answer(json.dumps(SUMMARY_ANSWER), ai_input)
     name = report_name("DEMO", START)
-    md = to_markdown(week, metrics, status, "DEMO", summary, generated=GENERATED)
-    page = to_html(week, metrics, status, "DEMO", summary, generated=GENERATED)
+    md = to_markdown(week, metrics, status, "DEMO", generated=GENERATED)
+    page = to_html(week, metrics, status, "DEMO", generated=GENERATED)
     return {
-        f"{name}.md": md.replace(AI_NOTE, AI_NOTE_SAMPLE),
-        f"{name}.html": page.replace(AI_NOTE, AI_NOTE_SAMPLE),
+        f"{name}.md": md,
+        f"{name}.html": page,
     }
 
 

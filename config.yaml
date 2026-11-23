@@ -42,14 +42,6 @@ ticket_status:
 project_status:
   high_priorities: [P1, P2]        # Red if one of these is red or black
 
-# AI summary (D25, D27, D28).
-ai:
-  enabled: true
-  model: claude-sonnet-5-5         # Model name. Change it here, not in the code.
-  max_tokens_per_run: 8000         # Cost limit for each run (input + output tokens)
-  hide_titles_from_ai: false       # true: the AI gets ticket keys, priorities, and statuses,
-                                   # never titles. The report still shows the titles (R04).
-
 output:
   folder: output                   # Excluded in .gitignore
   formats: [markdown, html]

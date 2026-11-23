@@ -29,4 +29,4 @@ def test_sample_uses_made_up_data_only():
         text = (ROOT / "examples" / name).read_text(encoding="utf-8")
         assert "SRG-" not in text  # No real ticket
         assert not re.search(r"[\w.]+@[\w-]+\.\w+", text)  # No email address
-        assert "Sample text" in text and "Written by AI" not in text
+        assert "Written by AI" not in text and "summary" not in text.lower()

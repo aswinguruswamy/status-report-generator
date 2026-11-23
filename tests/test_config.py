@@ -157,12 +157,6 @@ def test_wrong_value_type_names_the_line(tmp_path):
         load_config(path)
 
 
-def test_wrong_true_false_value(tmp_path):
-    path = repo_config_with(tmp_path, "hide_titles_from_ai: false", "hide_titles_from_ai: maybe")
-    with pytest.raises(ConfigError, match="must be true or false"):
-        load_config(path)
-
-
 def test_wrong_output_format(tmp_path):
     path = repo_config_with(tmp_path, "formats: [markdown, html]", "formats: [markdown, pdf]")
     with pytest.raises(ConfigError, match="'pdf' is not valid"):
