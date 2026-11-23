@@ -1,63 +1,128 @@
-"""Reads and checks config.yaml (SRG-17, D11, D14, D23).
+"""Reads and checks the settings file, config.yaml (v2 spec SRG-R13.1, SRG-R13.2).
 
-The tool stops with a ConfigError when the file has an error.
-Each message names the line in config.yaml where the error is.
+The file lists the teams (one Jira project for each team) and the v1 rule settings.
+Each v1 setting is optional and has its v1 default. There are no AI settings.
+The tool stops with a ConfigError when the file has an error. Each message says what is
+wrong and how to correct it, and names the line in config.yaml where it can.
 """
 
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
 PRIORITY_LEVELS = ("P1", "P2", "P3", "P4", "P5")
+HIGH_PRIORITIES = ("P1", "P2")  # Spec §4: "High priority" = P1 or P2
 UNMAPPED = "Unmapped"
 BLOCKED_METHODS = {"status", "flag", "label"}
-OUTPUT_FORMATS = {"markdown", "html"}
-AMBER_CATEGORIES = {"To Do", "In Progress"}
+NOT_STARTED = "To Do"  # Spec §4: "Not started" = status category To Do
+PROJECT_KEY = re.compile(r"^[A-Z][A-Z0-9_]{0,19}$")  # Jira project key
+
+DEFAULT_PRIORITY_MAP = {"P1": "Highest", "P2": "High", "P3": "Medium", "P4": "Low", "P5": "Lowest"}
+DEFAULTS = {
+    "work_types": ["Story", "Task", "Bug"],
+    "priority_map": DEFAULT_PRIORITY_MAP,
+    "blocked_method": ["status"],
+    "blocked_status_name": "Blocked",
+    "blocked_label": "blocked",
+    "amber_window_days": 2,
+    "forecast": True,
+    "output_folder": "output",
+}
+SETTINGS = {"teams", "timezone", *DEFAULTS}
+
+NO_TEAMS = "The settings file has no teams. Add a project key and a team name."
 
 
 class ConfigError(Exception):
-    """config.yaml has an error. The message tells the user how to correct it."""
+    """The settings file has an error. The message tells the user how to correct it."""
+
+
+@dataclass(frozen=True)
+class Team:
+    key: str  # Jira project key, for example ALP
+    name: str  # Team name on the page and in the report, for example Alpha
 
 
 @dataclass(frozen=True)
 class Config:
-    project_key: str
+    teams: tuple[Team, ...]
     timezone: str
-    work_types: tuple[str, ...]
-    priority_map: dict[str, str]  # Jira priority name -> P1 to P5
-    blocked_methods: tuple[str, ...]
-    blocked_status_name: str | None
-    blocked_label: str | None
-    amber_window_days: int
-    amber_status_category: str  # Status category for amber (D22), not a status name
-    high_priorities: tuple[str, ...]
-    output_folder: str
-    output_formats: tuple[str, ...]
-    warnings: list[str] = field(default_factory=list, compare=False)
+    work_types: tuple[str, ...] = ("Story", "Task", "Bug")
+    priority_map: dict[str, str] = field(
+        default_factory=lambda: {name.lower(): level for level, name in DEFAULT_PRIORITY_MAP.items()}
+    )  # Jira priority name (lower case) -> P1 to P5
+    blocked_methods: tuple[str, ...] = ("status",)
+    blocked_status_name: str | None = "Blocked"
+    blocked_label: str | None = "blocked"
+    amber_window_days: int = 2
+    forecast: bool = True
+    output_folder: str = "output"
+    # Fixed by the spec definitions (§4). Not settings any more.
+    amber_status_category: str = NOT_STARTED
+    high_priorities: tuple[str, ...] = HIGH_PRIORITIES
+
+    @property
+    def project_key(self) -> str:
+        """The first team's project key (the v1 weekly command reads one project)."""
+        return self.teams[0].key
 
     def priority_level(self, jira_priority: str | None) -> str:
-        """Return P1 to P5 for a Jira priority name, or "Unmapped" (decision A)."""
+        """Return P1 to P5 for a Jira priority name, or "Unmapped"."""
         if jira_priority is None:
             return UNMAPPED
         return self.priority_map.get(jira_priority.strip().lower(), UNMAPPED)
 
+    def is_high(self, jira_priority: str | None) -> bool:
+        """Spec §4: P1 or P2. A priority that is not in priority_map is not high (SRG-R13.4)."""
+        return self.priority_level(jira_priority) in self.high_priorities
+
     def unmapped_warning(self, ticket_key: str, jira_priority: str | None) -> str:
-        """Warning text for a ticket whose priority is not in priority_map."""
+        """Warning for a ticket whose priority is not in priority_map (SRG-R13.4)."""
         name = jira_priority if jira_priority else "(no priority)"
         return (
             f"{ticket_key}: priority '{name}' is not in priority_map in config.yaml. "
-            f"The ticket is in the '{UNMAPPED}' row."
+            f"The ticket is treated as not high priority ('{UNMAPPED}')."
         )
 
 
+def local_timezone() -> str:
+    """The time zone name of this computer (spec §4 default), or UTC if it cannot be found."""
+    name = os.environ.get("TZ", "").lstrip(":")
+    if name and _valid_zone(name):
+        return name
+    try:
+        target = os.path.realpath("/etc/localtime")
+    except OSError:
+        target = ""
+    if "zoneinfo/" in target:
+        name = target.split("zoneinfo/", 1)[1]
+        if _valid_zone(name):
+            return name
+    return "UTC"
+
+
+def _valid_zone(name: str) -> bool:
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return False
+    return True
+
+
 def load_config(path: str | Path = "config.yaml") -> Config:
-    """Read config.yaml, check each setting, and return a Config."""
+    """Read the settings file, check each setting, and return a Config."""
     path = Path(path)
     if not path.is_file():
-        raise ConfigError(f"{path}: file not found. Copy config.yaml from the repository.")
+        raise ConfigError(
+            f"The settings file {path} was not found. Copy config.yaml from the repository "
+            "and add your teams."
+        )
 
     text = path.read_text(encoding="utf-8")
     try:
@@ -68,6 +133,8 @@ def load_config(path: str | Path = "config.yaml") -> Config:
         where = f"{path.name} line {line}" if line else path.name
         raise ConfigError(f"{where}: the file is not valid YAML. {_problem(error)}") from None
 
+    if data is None:
+        raise ConfigError(NO_TEAMS)
     if not isinstance(data, dict):
         raise ConfigError(f"{path.name}: the file must contain settings in the form 'name: value'.")
 
@@ -84,44 +151,37 @@ class _Checker:
 
     # --- helpers -------------------------------------------------------
 
-    def line_of(self, *keys: str) -> int | None:
+    def node(self, *keys) -> yaml.Node | None:
         node = self.root
         for key in keys:
-            if not isinstance(node, yaml.MappingNode):
-                return None
-            for key_node, value_node in node.value:
-                if key_node.value == key:
-                    node = value_node
-                    break
+            if isinstance(node, yaml.MappingNode):
+                found = [value for name, value in node.value if name.value == key]
+            elif isinstance(node, yaml.SequenceNode) and isinstance(key, int):
+                found = node.value[key:key + 1]
             else:
-                return self.line_of(*keys[:-1]) if len(keys) > 1 else None
-        return node.start_mark.line + 1
+                found = []
+            if not found:
+                return node
+            node = found[0]
+        return node
 
-    def fail(self, keys: tuple[str, ...], message: str) -> ConfigError:
-        line = self.line_of(*keys)
+    def fail(self, keys: tuple, message: str) -> ConfigError:
+        node = self.node(*keys)
+        line = node.start_mark.line + 1 if node is not None else None
         where = f"{self.file_name} line {line}" if line else self.file_name
-        return ConfigError(f"{where}: {'.'.join(keys)}: {message}")
+        name = ".".join(str(k) for k in keys if not isinstance(k, int))
+        return ConfigError(f"{where}: {name}: {message}" if name else f"{where}: {message}")
 
-    def get(self, *keys: str, required: bool = True, default=None):
-        value = self.data
-        for key in keys:
-            if not isinstance(value, dict) or key not in value:
-                if required:
-                    raise self.fail(keys, "this setting is missing.")
-                return default
-            value = value[key]
-        return value
+    def get(self, key: str):
+        return self.data.get(key, DEFAULTS.get(key))
 
-    def text(self, *keys: str, required: bool = True, default=None) -> str | None:
-        value = self.get(*keys, required=required, default=default)
-        if value is None and not required:
-            return None
+    def text(self, key: str, value=None) -> str:
+        value = self.get(key) if value is None else value
         if not isinstance(value, str) or not value.strip():
-            raise self.fail(keys, "must be a text value.")
+            raise self.fail((key,), "must be a text value.")
         return value.strip()
 
-    def text_list(self, *keys: str) -> tuple[str, ...]:
-        value = self.get(*keys)
+    def text_list(self, keys: tuple, value) -> tuple[str, ...]:
         if isinstance(value, str):
             value = [value]
         if not isinstance(value, list) or not value:
@@ -130,19 +190,54 @@ class _Checker:
             raise self.fail(keys, "each item must be a text value.")
         return tuple(item.strip() for item in value)
 
-    def integer(self, *keys: str, minimum: int) -> int:
-        value = self.get(*keys)
-        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
-            raise self.fail(keys, f"must be a whole number of {minimum} or more.")
-        return value
-
-    def boolean(self, *keys: str) -> bool:
-        value = self.get(*keys)
-        if not isinstance(value, bool):
-            raise self.fail(keys, "must be true or false.")
-        return value
-
     # --- checks --------------------------------------------------------
+
+    def unknown_settings(self) -> None:
+        for key in self.data:
+            if key not in SETTINGS:
+                hint = " SRG v2 has no AI settings." if key == "ai" else ""
+                raise self.fail(
+                    (key,), f"'{key}' is not a setting. Remove it or check the spelling.{hint}"
+                )
+
+    def teams(self) -> tuple[Team, ...]:
+        raw = self.data.get("teams")
+        if raw is None or raw == []:
+            raise ConfigError(NO_TEAMS)
+        if not isinstance(raw, list):
+            raise self.fail(("teams",), "must be a list. Each item has a key and a name.")
+        teams = []
+        for number, item in enumerate(raw):
+            where = ("teams", number)
+            if not isinstance(item, dict) or not item.get("key") or not item.get("name"):
+                raise self.fail(
+                    where,
+                    f"team {number + 1} needs a project key and a team name, "
+                    "for example '- {key: ALP, name: Alpha}'.",
+                )
+            key = str(item["key"]).strip().upper()
+            if not PROJECT_KEY.match(key):
+                raise self.fail(
+                    where,
+                    f"'{item['key']}' is not a Jira project key. Use the key from the ticket "
+                    "numbers, for example ALP for ALP-12.",
+                )
+            teams.append(Team(key=key, name=str(item["name"]).strip()))
+        for key in dict.fromkeys(t.key for t in teams):
+            count = sum(1 for t in teams if t.key == key)
+            if count > 1:
+                raise ConfigError(f"Project {key} is listed {count} times. Remove one.")
+        return tuple(teams)
+
+    def timezone(self) -> str:
+        if "timezone" not in self.data:
+            return local_timezone()
+        name = self.text("timezone")
+        if not _valid_zone(name):
+            raise self.fail(
+                ("timezone",), f"'{name}' is not a time zone. Use a name such as America/Toronto."
+            )
+        return name
 
     def priority_map(self) -> dict[str, str]:
         raw = self.get("priority_map")
@@ -156,7 +251,9 @@ class _Checker:
                 )
         result: dict[str, str] = {}
         for level in PRIORITY_LEVELS:
-            for name in self.text_list("priority_map", level):
+            if level not in raw:
+                raise self.fail(("priority_map", level), "this setting is missing.")
+            for name in self.text_list(("priority_map", level), raw[level]):
                 key = name.lower()
                 if key in result:
                     raise self.fail(
@@ -166,72 +263,52 @@ class _Checker:
                 result[key] = level
         return result
 
-    def blocked(self) -> tuple[tuple[str, ...], str | None, str | None]:
-        methods = self.text_list("blocked_method")
+    def blocked(self) -> tuple[tuple[str, ...], str, str]:
+        methods = self.text_list(("blocked_method",), self.get("blocked_method"))
         for method in methods:
             if method not in BLOCKED_METHODS:
                 raise self.fail(
-                    ("blocked_method",),
-                    f"'{method}' is not valid. Use status, flag, or label.",
+                    ("blocked_method",), f"'{method}' is not valid. Use status, flag, or label."
                 )
-        status_name = self.text("blocked_status_name", required="status" in methods)
-        label = self.text("blocked_label", required="label" in methods)
-        return methods, status_name, label
+        return methods, self.text("blocked_status_name"), self.text("blocked_label")
 
     def work_types(self) -> tuple[str, ...]:
-        types = self.text_list("work_types")
+        types = self.text_list(("work_types",), self.get("work_types"))
         for name in types:
             if name.lower() in {"epic", "subtask", "sub-task"}:
                 raise self.fail(
                     ("work_types",),
-                    f"'{name}' cannot be counted. Epics and subtasks are not counted (D23).",
+                    f"'{name}' cannot be counted. Epics and sub-tasks are not counted.",
                 )
         return types
 
-    def high_priorities(self) -> tuple[str, ...]:
-        levels = self.text_list("project_status", "high_priorities")
-        for level in levels:
-            if level not in PRIORITY_LEVELS:
-                raise self.fail(
-                    ("project_status", "high_priorities"),
-                    f"'{level}' is not valid. Use P1 to P5.",
-                )
-        return levels
+    def whole_number(self, key: str) -> int:
+        value = self.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise self.fail((key,), "must be a whole number of 0 or more.")
+        return value
 
-    def output_formats(self) -> tuple[str, ...]:
-        formats = self.text_list("output", "formats")
-        for name in formats:
-            if name not in OUTPUT_FORMATS:
-                raise self.fail(
-                    ("output", "formats"),
-                    f"'{name}' is not valid. Use markdown or html.",
-                )
-        return formats
-
-    def amber_category(self) -> str:
-        value = self.text("ticket_status", "amber_status_category")
-        if value not in AMBER_CATEGORIES:
-            raise self.fail(
-                ("ticket_status", "amber_status_category"),
-                f"'{value}' is not valid. Use 'To Do' or 'In Progress' (a status category).",
-            )
+    def boolean(self, key: str) -> bool:
+        value = self.get(key)
+        if not isinstance(value, bool):
+            raise self.fail((key,), "must be true or false.")
         return value
 
     def build(self) -> Config:
+        self.unknown_settings()
+        teams = self.teams()
         methods, status_name, label = self.blocked()
         return Config(
-            project_key=self.text("jira", "project_key"),
-            timezone=self.text("jira", "timezone"),
+            teams=teams,
+            timezone=self.timezone(),
             work_types=self.work_types(),
             priority_map=self.priority_map(),
             blocked_methods=methods,
             blocked_status_name=status_name,
             blocked_label=label,
-            amber_window_days=self.integer("ticket_status", "amber_window_days", minimum=0),
-            amber_status_category=self.amber_category(),
-            high_priorities=self.high_priorities(),
-            output_folder=self.text("output", "folder"),
-            output_formats=self.output_formats(),
+            amber_window_days=self.whole_number("amber_window_days"),
+            forecast=self.boolean("forecast"),
+            output_folder=self.text("output_folder"),
         )
 
 

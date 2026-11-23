@@ -50,7 +50,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--format",
         choices=sorted(FORMATS),
-        help="Report format: md, html, or both. Default: config.yaml.",
+        help="Report format: md, html, or both. Default: md.",
     )
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml.")
     return parser.parse_args(argv)
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None, client: TicketSource | None = None, toda
         else:
             now = datetime.combine(today, time(12), zone)  # A fixed day (tests)
         start, end = week_range(args.week) if args.week else last_full_week(today)
-        formats = FORMATS[args.format] if args.format else config.output_formats
+        formats = FORMATS[args.format or "md"]
         folder = Path(args.output or config.output_folder)
 
         print(f"Project {project}, week {start} to {end}")

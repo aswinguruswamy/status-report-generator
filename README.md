@@ -79,7 +79,7 @@ The full rules, with examples and special cases: [docs/RAG-Rules.pdf](docs/RAG-R
 3. Run `pip install -r requirements.txt`, then `pip install -e .`.
 4. Copy `.env.example` to `.env` and add your values: the Jira site, your email, a Jira API
    token.
-5. Change `config.yaml` for your Jira project.
+5. Change `config.yaml`: add your teams (Jira project key and team name).
 
 **Caution:** Never commit the `.env` file. It contains your secrets. Git ignores it, and the
 CI scans each change for secrets.
@@ -95,9 +95,9 @@ status-report --help                   # all options
 
 | Option | Use |
 |---|---|
-| `--project` | Jira project key. Default: `config.yaml`. |
+| `--project` | Jira project key. Default: the first team in `config.yaml`. |
 | `--week` | A day in the week to report (YYYY-MM-DD). Default: the last full week. |
-| `--format` | `md`, `html`, or `both`. Default: `config.yaml`. |
+| `--format` | `md`, `html`, or `both`. Default: `md`. |
 | `--output` | Folder for the report. Default: `config.yaml`. |
 | `--config` | Path to `config.yaml`. |
 
@@ -112,22 +112,24 @@ clearly in black and white.
 
 ## Config options
 
-`config.yaml` is the source of the rules. Change the rules there, not in the code.
+`config.yaml` is the settings file and the source of the rules. Change the rules there, not
+in the code. Only `teams` is required; each other setting has its v1 default.
 
 | Setting | Default | Use |
 |---|---|---|
-| `jira.project_key` | `SRG` | Jira project to read. |
-| `jira.timezone` | `America/Toronto` | The week is Monday to Sunday in this time zone. |
-| `work_types` | Story, Task, Bug | Work types to count. Epics and subtasks are not counted. |
-| `priority_map` | Highest = P1 to Lowest = P5 | Jira priority names for P1 to P5. A list is allowed. |
+| `teams` | (none) | One item for each team: `key` (Jira project key) and `name` (team name). |
+| `timezone` | This computer's time zone | "Today", the 14-day window and the "as of" time use this time zone. |
+| `work_types` | Story, Task, Bug | Work types to count. Epics and sub-tasks are not counted. |
+| `priority_map` | Highest = P1 to Lowest = P5 | Jira priority names for P1 to P5. A list is allowed. P1 and P2 are high priority. |
 | `blocked_method` | `[status]` | How to find a blocked ticket: `status`, `flag`, `label`, or more than one. |
 | `blocked_status_name` | `Blocked` | The status for the `status` method. |
 | `blocked_label` | `blocked` | The label for the `label` method. |
-| `ticket_status.amber_window_days` | `2` | Amber: due within this many days... |
-| `ticket_status.amber_status_category` | `To Do` | ...and still in this status category. |
-| `project_status.high_priorities` | `[P1, P2]` | Priorities that make the project Red. |
-| `output.folder` | `output` | Folder for the reports. |
-| `output.formats` | `[markdown, html]` | The formats to write. |
+| `amber_window_days` | `2` | Amber: due within this many days and not started (status category To Do). |
+| `forecast` | `true` | Show the 85% forecast date for each team. |
+| `output_folder` | `output` | Folder for the reports. |
+
+The tool stops at start, and says what to correct, when the settings file is missing or has
+no teams, lists a project two times, or names a project that Jira does not know.
 
 ## Tests
 

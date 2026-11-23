@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from status_report.jira_client import JiraClient, JiraError
+from status_report.jira_client import JiraClient, JiraError, ProjectNotFound
 
 TOKEN = "fake-token-value-123"
 SITE = "https://example.atlassian.net"
@@ -227,7 +227,7 @@ def test_wrong_token_gives_a_clear_message_without_the_token():
     with pytest.raises(JiraError) as error:
         client.connect()
     assert error.value.status == 401
-    assert "401" in str(error.value)
+    assert str(error.value) == "Jira did not accept the token. Make a new token and update .env."  # AC28
     assert TOKEN not in str(error.value)
 
 
@@ -236,8 +236,32 @@ def test_missing_token_in_env(monkeypatch):
     monkeypatch.setenv("JIRA_BASE_URL", SITE)
     monkeypatch.setenv("JIRA_EMAIL", "a@b.com")
     monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
-    with pytest.raises(JiraError, match="Missing in .env: JIRA_API_TOKEN"):
+    with pytest.raises(JiraError) as error:
         JiraClient.from_env()
+    assert str(error.value) == "No Jira token found. Add JIRA_API_TOKEN to .env."  # AC27
+
+
+def test_missing_token_and_site_names_both(monkeypatch):
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    for name in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    with pytest.raises(JiraError, match="No Jira token found.*Also add JIRA_BASE_URL, JIRA_EMAIL"):
+        JiraClient.from_env()
+
+
+def test_ac26_unknown_project_stops_with_a_clear_message():
+    def handler(url, params):
+        if url.endswith("/rest/api/3/project/XYZ"):
+            return FakeResponse(status_code=404, data={"errorMessages": ["No project could be found"]})
+        if url.endswith("/rest/api/3/project/ALP"):
+            return FakeResponse(data={"key": "ALP", "name": "Alpha"})
+        return handler_for([])(url, params)
+
+    client, _ = client_with(handler)
+    client.check_project("ALP")  # Known project: no error
+    with pytest.raises(ProjectNotFound) as error:
+        client.check_project("XYZ")
+    assert str(error.value) == "Project XYZ not found in Jira. Check the key in settings."
 
 
 def test_scoped_token_changes_to_the_api_gateway():
