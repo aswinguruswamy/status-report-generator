@@ -13,6 +13,7 @@ dependencies = [
     "requests",
     "PyYAML",
     "python-dotenv",
+    "streamlit",
     "mcf @ git+https://github.com/aswinguruswamy/monte-carlo-delivery-forecast@8b3ffbb130a1a3764c8a99d06a8292946a3e5ffe",
 ]
 

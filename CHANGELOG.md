@@ -12,6 +12,7 @@ SRG v2 (spec `specs/spec.md` v1.3).
 - S6: The team table (`portfolio.py`): one row for each team with colour, reason, done/total ("3/5", "4/9 · 2 sprints", "1/4 · last 14 days"), % of open tickets with no due date, closed/opened in the last 14 days, the Black, Red and Amber tickets, and "Could not read – <reason>" for a team that fails. Sorted Red, Amber, Green, then name.
 - S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to an MCF commit).
 - S8: The portfolio Markdown report `SRG_<yyyy-mm-dd>_<hhmm>.md` (as-of time, team table, reason per team, Black/Red/Amber tickets per team, "Sample data" in demo mode). `status-report` writes it (`--config`, `--output`, `--demo`). Removed: the v1 weekly report (Markdown and HTML), the weekly options and the v1 weekly code.
+- S9: The web page (Streamlit): the team table with every colour as a word, "as of hh:mm", a team's Black/Red/Amber tickets on a row click (Jira links for real data), Refresh (a failed refresh shows the error and "Last good read hh:mm"), Generate report (download), and "Sample data" in demo mode. `demo_app.py` is the keyless public demo.
 
 ## v1.0.0 (2026-10-24)
 
