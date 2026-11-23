@@ -1,9 +1,6 @@
 # Changelog
 
-<!-- At the v2 release: change "## Unreleased (v2.0.0)" below to "## v2.0.0 (<date>)" and set
-the version in pyproject.toml to 2.0.0. The release workflow publishes that section. -->
-
-## Unreleased (v2.0.0)
+## v2.0.0 (2026-11-23)
 
 SRG v2: one table for every team, a report on demand, and no AI (spec `specs/spec.md` v1.4).
 Public demo with made-up data: https://srg-app.streamlit.app
@@ -16,7 +13,7 @@ Public demo with made-up data: https://srg-app.streamlit.app
 - S4: Spec §4 definitions in code: counted, cleaned up, done, open, the 14-day window (local time), effective due date, overdue, blocked, not started, colour scope (sprint or last 14 days) and done/total.
 - S5: Colours: ticket colour with "no date + high priority = Amber" (Black, Red, Amber, Green; first rule wins); the v1 team rule on the colour scope; the reason text with count, priority level, cause and up to 3 keys; unknown priorities are not high and give a warning.
 - S6: The team table (`portfolio.py`): one row for each team with colour, reason, done/total ("3/5", "4/9 · 2 sprints", "1/4 · last 14 days"), % of open tickets with no due date, closed/opened in the last 14 days, the Black, Red and Amber tickets, and "Could not read – <reason>" for a team that fails. Sorted Red, Amber, Green, then name.
-- S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to an MCF commit).
+- S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to the MCF v2.0.0 release).
 - S8: The portfolio Markdown report `SRG_<yyyy-mm-dd>_<hhmm>.md` (as-of time, team table, reason per team, Black/Red/Amber tickets per team, "Sample data" in demo mode). `status-report` writes it (`--config`, `--output`, `--demo`). Removed: the v1 weekly report (Markdown and HTML), the weekly options and the v1 weekly code.
 - S9: The web page (Streamlit): the team table with every colour as a word, "as of hh:mm", a team's Black/Red/Amber tickets on a row click (Jira links for real data), Refresh (a failed refresh shows the error and "Last good read hh:mm"), Generate report (download), and "Sample data" in demo mode. `demo_app.py` is the keyless public demo.
 - S10: README with a "Try it" link to the public demo (https://srg-app.streamlit.app), screenshots of the table, a team's details and the report (in place of the video, spec v1.4), and current known limits.
