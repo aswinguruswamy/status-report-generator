@@ -1,1 +1,1 @@
-"""Status Report Generator: reads Jira and writes a weekly status report."""
+"""Status Report Generator: a team status table from Jira, with rules for every colour."""

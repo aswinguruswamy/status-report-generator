@@ -1,4 +1,4 @@
-"""Tests for the Jira client with fake Jira answers (SRG-13)."""
+"""Tests for the Jira client with fake Jira answers (SRG-13; the v2 reads are in test_jira_v2.py)."""
 
 from datetime import UTC, date, datetime
 
@@ -79,6 +79,12 @@ def handler_for(issues, page_size=100, extra=None):
             return FakeResponse(data=STATUSES)
         if url.endswith("/rest/api/3/field"):
             return FakeResponse(data=[{"id": "customfield_10021", "name": "Flagged"}])
+        if url.endswith("/rest/api/3/project/SRG"):
+            return FakeResponse(data={"key": "SRG"})
+        if url.endswith("/rest/api/3/project/SRG/versions"):
+            return FakeResponse(data=[])
+        if url.endswith("/rest/agile/1.0/board"):
+            return FakeResponse(data={"values": [], "isLast": True})
         if url.endswith("/rest/api/3/search/jql"):
             start = int(params.get("nextPageToken") or 0)
             page = issues[start:start + page_size]
@@ -98,11 +104,14 @@ def client_with(handler):
     return JiraClient(SITE, "a@b.com", TOKEN, session=session, sleep=lambda s: None), session
 
 
-WEEK = (date(2026, 10, 19), date(2026, 10, 25))
+TODAY = date(2026, 10, 25)
 
 
 def fetch(client, need_flag=False):
-    return client.fetch_tickets("SRG", ("Story", "Task", "Bug"), *WEEK, need_flag=need_flag)
+    read_at = datetime(2026, 10, 25, 12, tzinfo=UTC)
+    data = client.read_team("SRG", ("Story", "Task", "Bug"), TODAY, read_at, 14,
+                            need_flag=need_flag, need_first_closed=False)
+    return list(data.tickets)
 
 
 # --- AC: read only (D25) ---------------------------------------------------
@@ -175,22 +184,6 @@ def test_resolved_date_is_the_second_check_when_no_history():
     raw = issue("SRG-1", "Done", "Done", resolved="2026-10-22T08:00:00.000+0000")
     client, _ = client_with(handler_for([raw]))
     assert fetch(client)[0].done_date == datetime(2026, 10, 22, 8, tzinfo=UTC)
-
-
-def test_query_is_one_day_wider_than_the_week():
-    # The exact filter is in metrics, in the time zone from config.yaml (SRG-33, C3).
-    client, session = client_with(handler_for([]))
-    fetch(client)
-    jql = next(c for c in session.calls if c[1].endswith("/search/jql"))[2]["jql"]
-    assert 'created < "2026-10-27"' in jql
-    assert 'updated >= "2026-10-18"' in jql
-
-
-def test_client_does_not_drop_a_ticket_at_the_week_limit():
-    # Sunday 23:30 in Toronto is Monday 03:30 in UTC.
-    raw = issue("SRG-1", created="2026-10-26T03:30:00.000+0000")
-    client, _ = client_with(handler_for([raw]))
-    assert [t.key for t in fetch(client)] == ["SRG-1"]
 
 
 def test_long_history_is_read_in_full():

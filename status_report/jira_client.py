@@ -233,39 +233,6 @@ class JiraClient:
             return _parse_datetime(f["resolutiondate"])
         return None
 
-    # --- v1 reading: one week -------------------------------------------
-
-    def fetch_tickets(
-        self,
-        project_key: str,
-        work_types: tuple[str, ...],
-        start: date,
-        end: date,
-        need_flag: bool = False,
-    ) -> list[Ticket]:
-        """Return the tickets that can matter for the week.
-
-        The query is one day wider on each side, because Jira uses the time zone of the
-        user profile. The weekly numbers do the exact date filtering in the time zone
-        from config.yaml (status_report.metrics).
-        """
-        if not self._connected:
-            self.connect()
-        if need_flag:
-            self._flag_field = self._find_flag_field()
-        categories = self._status_category_map()
-
-        types = ", ".join(f'"{name}"' for name in work_types)
-        jql = (
-            f'project = "{project_key}" AND issuetype in ({types}) '
-            f'AND created < "{end + timedelta(days=2):%Y-%m-%d}" '
-            f'AND (statusCategory != Done OR updated >= "{start - timedelta(days=1):%Y-%m-%d}") '
-            "ORDER BY key"
-        )
-        fields = TICKET_FIELDS + ([self._flag_field] if self._flag_field else [])
-
-        return [self._to_ticket(raw, categories) for raw in self._search(jql, fields)]
-
     def _search(self, jql: str, fields: list[str], changelog: bool = True):
         token = None
         while True:

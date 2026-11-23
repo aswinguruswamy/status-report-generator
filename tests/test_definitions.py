@@ -11,13 +11,13 @@ from status_report.metrics import (
     closed_in_window,
     colour_scope,
     effective_due_date,
-    is_blocked_v2,
+    is_blocked,
     is_cleaned_up,
     is_counted,
-    is_done_v2,
+    is_done,
     is_not_started,
-    is_open_v2,
-    is_overdue_v2,
+    is_open,
+    is_overdue,
     local_today,
     opened_in_window,
     window_counts,
@@ -39,15 +39,15 @@ def test_counted_ticket_types_come_from_work_types():
 def test_wont_do_and_duplicate_are_cleaned_up_not_done_and_not_open():
     for name in ("Won't Do", "Duplicate", "won’t do", " DUPLICATE "):
         t = ticket(status="Done", resolution=name)
-        assert is_cleaned_up(t) and not is_done_v2(t) and not is_open_v2(t)
+        assert is_cleaned_up(t) and not is_done(t) and not is_open(t)
     done = ticket(status="Done")
-    assert not is_cleaned_up(done) and is_done_v2(done) and not is_open_v2(done)
+    assert not is_cleaned_up(done) and is_done(done) and not is_open(done)
 
 
 def test_reopened_ticket_is_open():
     history = [move(-5, "In Progress", "Done"), move(-2, "Done", "In Progress")]
     t = ticket(status="In Progress", history=history)
-    assert is_open_v2(t) and not is_done_v2(t)
+    assert is_open(t) and not is_done(t)
 
 
 # --- Window and time zone ----------------------------------------------------------
@@ -116,20 +116,20 @@ def test_sprint_end_date_is_the_local_date():
 
 
 def test_overdue_is_open_with_effective_due_date_before_today():
-    assert is_overdue_v2(ticket(due=-1), TODAY, TZ)
-    assert not is_overdue_v2(ticket(due=0), TODAY, TZ)
-    assert not is_overdue_v2(ticket(status="Done", due=-5), TODAY, TZ)
+    assert is_overdue(ticket(due=-1), TODAY, TZ)
+    assert not is_overdue(ticket(due=0), TODAY, TZ)
+    assert not is_overdue(ticket(status="Done", due=-5), TODAY, TZ)
     ended = sprint(5, -1, "closed")
-    assert is_overdue_v2(ticket(sprints=(ended,)), TODAY, TZ)  # Sprint ended yesterday
+    assert is_overdue(ticket(sprints=(ended,)), TODAY, TZ)  # Sprint ended yesterday
 
 
 def test_blocked_by_each_method_and_only_when_open():
-    assert is_blocked_v2(ticket(status="Blocked"), CONFIG)
-    assert not is_blocked_v2(ticket(labels=("blocked",)), CONFIG)  # Default: status only
+    assert is_blocked(ticket(status="Blocked"), CONFIG)
+    assert not is_blocked(ticket(labels=("blocked",)), CONFIG)  # Default: status only
     both = replace(CONFIG, blocked_methods=("flag", "label"))
-    assert is_blocked_v2(ticket(flagged=True), both)
-    assert is_blocked_v2(ticket(labels=("Blocked",)), both)
-    assert not is_blocked_v2(ticket(status="Done", labels=("blocked",)), both)
+    assert is_blocked(ticket(flagged=True), both)
+    assert is_blocked(ticket(labels=("Blocked",)), both)
+    assert not is_blocked(ticket(status="Done", labels=("blocked",)), both)
 
 
 def test_not_started_is_status_category_to_do():

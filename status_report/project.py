@@ -1,20 +1,19 @@
-"""Priority matrix and project status (SRG-21, D21).
+"""Team colour and reason (spec SRG-R7.1, SRG-R10; the v1 priority rule).
 
-The project status is only Red, Amber, or Green. Black counts as Red here.
-  Red:   one or more high-priority tickets (P1, P2) are Red or Black.
-  Amber: one or more other tickets are Red or Black, or one or more high-priority
-         tickets are Amber, or the team closed fewer tickets than it opened.
-  Green: none of the above.
-Only these rules set the status (v2 spec SRG-R5.1). There is no AI in SRG v2.
+The first true rule wins:
+  Red   = 1 or more high-priority tickets (P1, P2) are Black or Red
+  Amber = 1 or more other tickets are Black or Red, or 1 or more high-priority tickets
+          are Amber, or closed in the window < opened in the window (whole project)
+  Green = none of these. A team is never Black.
+The reason parts follow the same order. Only these rules set the colour (spec SRG-R5.1);
+there is no AI in SRG v2, and the forecast never changes the colour (R4.2).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from status_report.config import PRIORITY_LEVELS, UNMAPPED, Config
-from status_report.metrics import WeekMetrics
-from status_report.models import Ticket
 from status_report.status import (
     AMBER,
     BLACK,
@@ -24,104 +23,12 @@ from status_report.status import (
     NO_DUE_DATE,
     OVERDUE,
     RED,
-    TICKET_STATUSES,
     TicketColour,
     ticket_colour,
-    ticket_statuses,
 )
 
 LEVELS = (*PRIORITY_LEVELS, UNMAPPED)
-WHY = {BLACK: "overdue", RED: "blocked", AMBER: "due soon and not started"}
-MAX_KEYS = 3  # Keys named in each part of the reason; the report table has all (SRG-36, D43)
-
-
-@dataclass(frozen=True)
-class ProjectStatus:
-    status: str  # Red, Amber, or Green
-    reason: str  # One line for the executive, for example "Red: 1 P1 ticket is blocked (SRG-12)."
-    matrix: dict[str, dict[str, list[str]]]  # ticket status -> priority level -> ticket keys
-    ticket_status: dict[str, str]  # ticket key -> ticket status
-    warnings: list[str] = field(default_factory=list)
-
-    def counts(self) -> dict[str, dict[str, int]]:
-        return {s: {lv: len(keys) for lv, keys in row.items()} for s, row in self.matrix.items()}
-
-
-def build_matrix(
-    tickets: list[Ticket], statuses: dict[str, str], config: Config
-) -> dict[str, dict[str, list[str]]]:
-    matrix = {status: {level: [] for level in LEVELS} for status in TICKET_STATUSES}
-    for ticket in tickets:
-        status = statuses.get(ticket.key)
-        if status is not None:
-            matrix[status][config.priority_level(ticket.priority)].append(ticket.key)
-    return matrix
-
-
-def _phrase(level: str, status: str, keys: list[str]) -> str:
-    noun = "ticket is" if len(keys) == 1 else "tickets are"
-    shown = ", ".join(keys[:MAX_KEYS])
-    if len(keys) > MAX_KEYS:
-        shown += f", and {len(keys) - MAX_KEYS} more"
-    return f"{len(keys)} {level} {noun} {WHY[status]} ({shown})"
-
-
-def _phrases(matrix, levels, statuses) -> list[str]:
-    return [
-        _phrase(level, status, matrix[status][level])
-        for status in statuses
-        for level in levels
-        if matrix[status][level]
-    ]
-
-
-def project_status(
-    tickets: list[Ticket], metrics: WeekMetrics, config: Config
-) -> ProjectStatus:
-    statuses = ticket_statuses(tickets, metrics, config)
-    matrix = build_matrix(tickets, statuses, config)
-    high = [lv for lv in LEVELS if lv in config.high_priorities]
-    other = [lv for lv in LEVELS if lv not in config.high_priorities]  # Includes Unmapped
-
-    warnings = [
-        config.unmapped_warning(t.key, t.priority)
-        for t in tickets
-        if t.key in statuses and config.priority_level(t.priority) == UNMAPPED
-    ]
-
-    red = _phrases(matrix, high, (BLACK, RED))
-    if red:
-        status, reason = RED, "; ".join(red)
-    else:
-        amber = _phrases(matrix, other, (BLACK, RED)) + _phrases(matrix, high, (AMBER,))
-        closed, opened = len(metrics.closed), len(metrics.opened)
-        if closed < opened:
-            amber.append(f"the team closed {closed} and opened {opened} tickets")
-        if amber:
-            status, reason = AMBER, "; ".join(amber)
-        elif not statuses:
-            status, reason = GREEN, "No open tickets"
-        else:
-            status, reason = GREEN, "No blocked, overdue, or at-risk tickets"
-
-    text = reason[0].upper() + reason[1:]
-    return ProjectStatus(
-        status=status,
-        reason=f"{status}: {text}.",
-        matrix=matrix,
-        ticket_status=statuses,
-        warnings=warnings,
-    )
-
-
-# =====================================================================================
-# v2 team colour and reason (spec SRG-R7.1, SRG-R10; plan S5). The first true rule wins:
-#   Red   = 1 or more high-priority tickets are Black or Red
-#   Amber = 1 or more other tickets are Black or Red, or 1 or more high-priority tickets
-#           are Amber, or closed in the window < opened in the window (whole project)
-#   Green = none of these. A team is never Black.
-# The reason parts follow the same order. The forecast never changes the colour (R4.2).
-# =====================================================================================
+MAX_KEYS = 3  # Keys named in each part of the reason; the details list has all of them
 
 VERB = {  # cause -> (one ticket, more tickets)
     OVERDUE: ("ticket is overdue", "tickets are overdue"),

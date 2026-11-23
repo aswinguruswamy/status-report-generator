@@ -2,75 +2,87 @@
 
 [![CI](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/aswinguruswamy/status-report-generator/actions/workflows/ci.yml)
 
-A Python tool that reads one Jira project and writes a weekly status report. Fixed rules set
-the RAG status. There is no AI in the tool: code sets every number and colour.
+A Python tool that answers "how are the teams doing?" at any time. It reads every team's
+Jira project and shows one table: the colour of each team, the rule behind the colour, the
+sprint progress and a forecast date. On demand it writes the same data as a Markdown report.
+There is no AI in the tool: code sets every number, colour and date.
 
-**v2 is in progress** (spec: [`specs/spec.md`](specs/spec.md)): one table for many teams, a web
-page and a report on demand. The v1 AI summary is removed (it stays in the v1.0.0 release).
+Spec: [`specs/spec.md`](specs/spec.md) (v2). The v1 weekly report with an AI summary stays in the
+v1.0.0 release.
 
-**Sample report** (made-up data): [Markdown](examples/DEMO-2026-W43.md) ·
-[HTML](examples/DEMO-2026-W43.html)
+**Sample report** (made-up data): [SRG_2026-12-01_0942.md](examples/SRG_2026-12-01_0942.md)
 
 ## Known limits
 
 - Tested on Jira Cloud **team-managed** projects only. Company-managed projects can have
   other status names and fields.
-- One Jira project for each run.
-- The report reads Jira. It does not send anything to Confluence, Slack or e-mail (not in v2 either).
-- The flag and the label methods for "blocked" use today's value, because Jira does not keep
-  their history. The status method uses the history.
+- One team = one Jira project. Programs, history and "what changed" are not in v2.
+- The tool only reads Jira. It does not send the report anywhere (no e-mail, Slack or Confluence).
+- "Blocked" uses the status, the flag or the label as it is now.
+- The forecast needs 12 weeks (84 days) from the first closed ticket. A younger team shows
+  "Not enough history yet – needs 12 weeks".
+- "First closed ticket" uses the Jira Resolved date.
 
 ## The problem
 
-Each week, a project manager reads Jira, counts the work, decides on a status colour, and
-writes the report. This takes time. Two managers can give the same week different colours.
+A PM with several teams in Jira must answer "how are the teams doing?" at any time. Today the
+PM waits for the weekly report or builds the answer by hand. Numbers are often old, and
+colours are often too kind: a team without due dates looks Green.
 
-This tool makes the report in less than 2 minutes. Rules set the status, so the same week
-always gets the same colour.
+This tool reads Jira now and sets each colour with fixed rules, so the same data always gets
+the same colour, and each colour comes with its reason.
 
 ## Users
 
-- **Project managers and Scrum Masters:** run the tool each week and send the report.
-- **Executives and sponsors:** read the status and the risks in one minute.
-- **Team leads:** see the blocked and overdue work, with the owner and the days.
+- **Project managers:** open the table when the boss asks, click a team for the details,
+  make the report for the end-of-day update.
+- **Executives and sponsors:** read the table and the reasons in one minute.
+- **Team leads:** see their blocked, overdue and at-risk tickets.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    J[(Jira Cloud)] -->|read only| C[Jira client]
-    C --> M[Weekly numbers<br/>closed, opened, open,<br/>blocked, overdue]
-    M --> R[Status rules<br/>ticket: Black, Red, Amber, Green<br/>project: Red, Amber, Green]
-    R --> W[Report writer]
-    W --> F[Markdown and HTML files]
+    J[(Jira Cloud)] -->|read only, 4 teams at a time| C[Jira client]
+    C --> D[Definitions<br/>colour scope, window,<br/>effective due date]
+    D --> R[Rules<br/>ticket: Black, Red, Amber, Green<br/>team: Red, Amber, Green]
+    D --> F[Forecast<br/>MCF simulation, fixed seed]
+    R --> T[Team table]
+    F --> T
+    T --> M[Markdown report]
 ```
 
-1. The tool reads the tickets of the week from Jira, with the status history. It never
-   changes Jira.
-2. It counts the numbers at the end of the week, from the status history.
-3. Rules from `config.yaml` give each open ticket a status, then give the project a status.
-4. The tool writes the report as Markdown and HTML.
+1. The tool reads each team's project from Jira: the open tickets, the tickets that changed
+   in the last 84 days, the active sprints and the next release. It never changes Jira.
+2. The **colour scope** is the active sprint (or sprints). A team with no active sprint uses
+   the tickets created, moved or closed in the last 14 days.
+3. Rules give each open ticket a colour, then give the team a colour and a reason.
+4. The forecast gives the 85% date to finish all open tickets, from the MCF simulation code.
+5. The tool writes the table as a Markdown report: `SRG_<date>_<hhmm>.md`.
 
 ## Status rules (short form)
 
-**Ticket status** (the first true rule sets it):
+Won't Do and Duplicate tickets are left out of every count. The **effective due date** is the
+due date; if none, the end of the ticket's sprint.
 
-| Status | Rule |
+**Ticket colour** (the first true rule sets it):
+
+| Colour | Rule |
 |---|---|
-| ⚫ Black | Overdue: the due date has passed and the ticket is open. |
-| 🔴 Red | Blocked, not overdue. |
-| 🟠 Amber | Due today or in the next 2 days, and not started (still in the To Do category). |
+| ⚫ Black | Overdue: the effective due date has passed and the ticket is open. |
+| 🔴 Red | Blocked. |
+| 🟠 Amber | Due today or in the next 2 days and not started (To Do), or no effective due date and high priority (P1, P2). |
 | 🟢 Green | All other open tickets. |
 
-**Project status:**
+**Team colour:**
 
-| Status | Rule |
+| Colour | Rule |
 |---|---|
-| 🔴 Red | One or more P1 or P2 tickets are Red or Black. |
-| 🟠 Amber | A P3 to P5 or unmapped ticket is Red or Black, a P1 or P2 ticket is Amber, or the team closed fewer tickets than it opened. |
-| 🟢 Green | None of the above. |
+| 🔴 Red | One or more P1 or P2 tickets are Black or Red. |
+| 🟠 Amber | A P3 to P5 or unmapped ticket is Black or Red, a P1 or P2 ticket is Amber, or the team closed fewer tickets than it opened in the last 14 days. |
+| 🟢 Green | None of the above. A team is never Black. |
 
-The full rules, with examples and special cases: [docs/RAG-Rules.pdf](docs/RAG-Rules.pdf).
+The forecast never changes a colour.
 
 ## Setup
 
@@ -87,28 +99,21 @@ CI scans each change for secrets.
 ## How to run
 
 ```
-status-report                          # last full week, settings from config.yaml
-status-report --week 2026-10-19        # the week that contains this day
-status-report --project SRG --format both
+status-report                          # read every team in config.yaml, write the report
+status-report --demo                   # the same with the sample data: no Jira, no token
 status-report --help                   # all options
 ```
 
 | Option | Use |
 |---|---|
-| `--project` | Jira project key. Default: the first team in `config.yaml`. |
-| `--week` | A day in the week to report (YYYY-MM-DD). Default: the last full week. |
-| `--format` | `md`, `html`, or `both`. Default: `md`. |
-| `--output` | Folder for the report. Default: `config.yaml`. |
-| `--config` | Path to `config.yaml`. |
+| `--config` | Path to the settings file. Default: `config.yaml`. |
+| `--output` | Folder for the report. Default: `output_folder` in the settings. |
+| `--demo` | Use the made-up sample data in `demo/`. |
 
-The report goes into the `output` folder. Git ignores this folder. The file name has the
-project key and the ISO week, for example `output/SRG-2026-W43.md`. For the current week,
-the numbers are the state now, not at the end of the week.
-
-Both files have the same sections and data, in this order: project status, key numbers,
-priority matrix, blocked tickets, overdue tickets, closed this week, warnings, and all tickets. Each status is a colour mark and a word. The HTML
-report is one file with no external links. It is easy to read on a phone and prints
-clearly in black and white.
+The report goes into the `output` folder. Git ignores this folder. The file name has the date
+and time of the Jira read, for example `output/SRG_2026-12-01_0942.md`. The report has the
+"as of" time, the team table, the reason for each team, and each team's Black, Red and Amber
+tickets. Each colour is a mark and a word.
 
 ## Config options
 
@@ -134,17 +139,16 @@ no teams, lists a project two times, or names a project that Jira does not know.
 ## Tests
 
 ```
-pytest                                  # all tests, no Jira calls (about 5 seconds)
+pytest                                  # all tests, no Jira calls (a few seconds)
+python scripts/make_demo.py             # make the sample Jira data again (demo/jira.json)
 python scripts/make_sample.py           # make the sample report again after a layout change
 ```
 
-- **Unit and scenario tests** check each status rule with a known result.
-- **Random tests** make 300 difficult weeks with a fixed seed and check that the tool survives:
-  special characters, empty weeks, more than 100 tickets. A failing week is saved in
-  `tests/regressions/` as a permanent test.
-- **Format tests** check that the Markdown and HTML reports have the same sections and data.
-- **CI** (GitHub Actions) runs the secret scan, the style check, and all tests on Python 3.11,
-  3.12, and 3.13 for each pull request.
+- **Unit tests** check each rule and each acceptance criterion of the spec with a known result.
+- **Demo test:** the sample data goes through the real Jira client, rules and report, offline.
+- **Golden file:** the sample report in `examples/` must match the report made from the demo.
+- **CI** (GitHub Actions) runs the secret scan, the style check, the dependency and licence
+  scans, and all tests on Python 3.11, 3.12, and 3.13 for each pull request.
 
 ## Project documents
 

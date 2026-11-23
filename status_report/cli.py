@@ -1,5 +1,6 @@
-"""Command line: status-report --project SRG --week 2026-10-19 (SRG-18).
+"""Command line: status-report (spec SRG-R12; plan S8).
 
+Reads every team in the settings file and writes the Markdown report.
 Exit codes: 0 = report made, 1 = the tool stopped with an error, 2 = wrong options.
 """
 
@@ -7,98 +8,45 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date, datetime, time, timedelta
-from pathlib import Path
-from zoneinfo import ZoneInfo
 
-from status_report.config import ConfigError, load_config
+from status_report.config import ConfigError
 from status_report.jira_client import JiraError
-from status_report.metrics import calculate, tickets_in_week
-from status_report.project import project_status
-from status_report.report import write_report
-from status_report.sources import TicketSource, default_source
+from status_report.report import marked, write_report
+from status_report.run import load_settings, make_client, read_portfolio
 
 EXIT_OK = 0
 EXIT_ERROR = 1
-FORMATS = {"md": ("markdown",), "html": ("html",), "both": ("markdown", "html")}
-
-
-def week_range(day: date) -> tuple[date, date]:
-    """Return Monday and Sunday of the week that contains the day."""
-    monday = day - timedelta(days=day.weekday())
-    return monday, monday + timedelta(days=6)
-
-
-def last_full_week(today: date) -> tuple[date, date]:
-    """Return Monday and Sunday of the last full week before today."""
-    return week_range(today - timedelta(days=7))
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="status-report",
-        description="Read one Jira project and write a weekly status report.",
+        description="Read every team in the settings file from Jira and write the team status report.",
     )
-    parser.add_argument("--project", help="Jira project key, for example SRG. Default: config.yaml.")
-    parser.add_argument(
-        "--week",
-        type=date.fromisoformat,
-        metavar="YYYY-MM-DD",
-        help="Any day in the week to report (Monday to Sunday). Default: the last full week.",
-    )
-    parser.add_argument("--output", help="Folder for the report. Default: config.yaml.")
-    parser.add_argument(
-        "--format",
-        choices=sorted(FORMATS),
-        help="Report format: md, html, or both. Default: md.",
-    )
-    parser.add_argument("--config", default="config.yaml", help="Path to config.yaml.")
+    parser.add_argument("--config", help="Path to the settings file. Default: config.yaml.")
+    parser.add_argument("--output", help="Folder for the report. Default: output_folder in settings.")
+    parser.add_argument("--demo", action="store_true",
+                        help="Use the sample data in demo/. No Jira account or token is needed.")
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None, client: TicketSource | None = None, today: date | None = None) -> int:
+def main(argv: list[str] | None = None, client=None, now=None) -> int:
     args = parse_args(argv)
     try:
-        config = load_config(args.config)
-        project = args.project or config.project_key
-        zone = ZoneInfo(config.timezone)
-        if today is None:
-            now = datetime.now(zone)
-            today = now.date()
-        else:
-            now = datetime.combine(today, time(12), zone)  # A fixed day (tests)
-        start, end = week_range(args.week) if args.week else last_full_week(today)
-        formats = FORMATS[args.format or "md"]
-        folder = Path(args.output or config.output_folder)
-
-        print(f"Project {project}, week {start} to {end}")
-        print("1/3 Connecting to Jira...")
-        client = client or default_source()
-        client.connect()
-
-        print("2/3 Reading tickets...")
-        tickets = client.fetch_tickets(
-            project, config.work_types, start, end, need_flag="flag" in config.blocked_methods
-        )
-        metrics = calculate(tickets, config, start, end, now=now)
-        week_tickets = tickets_in_week(tickets, metrics)
-        print(f"    {len(week_tickets)} tickets in the week")
-        counts = metrics.counts()
-        print("    " + ", ".join(f"{name} {value}" for name, value in counts.items()))
-        status = project_status(week_tickets, metrics, config)
-        print(f"    Project status: {status.reason}")
-        for warning in status.warnings:
-            print(f"    WARNING: {warning}")
-
-        print("3/3 Writing the report...")
-        paths = write_report(
-            week_tickets, metrics, status, project, folder, formats,
-            warnings=status.warnings, generated=today,
-        )
+        config = load_settings(args.config, demo=args.demo)
+        client = client or make_client(args.demo)
+        print(f"Reading {len(config.teams)} teams{' (sample data)' if args.demo else ''}...")
+        portfolio = read_portfolio(client, config, demo=args.demo, at_start=True, now=now)
+        path = write_report(portfolio, args.output or config.output_folder)
     except (ConfigError, JiraError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return EXIT_ERROR
 
-    for path in paths:
-        print(f"Report: {path.resolve()}")
+    print(f"Team status {portfolio.as_of}")
+    width = max(len(row.name) for row in portfolio.rows)
+    for row in portfolio.rows:
+        print(f"  {row.name:<{width}}  {marked(row.colour):<15} {row.progress:<22} {row.reason}")
+    for warning in portfolio.warnings:
+        print(f"WARNING: {warning}")
+    print(f"Report: {path.resolve()}")
     return EXIT_OK
