@@ -38,7 +38,7 @@ def portfolio_at(hour, minute=0, beta=None):
 
 
 def test_refresh_shows_the_new_read_time():
-    state = refresh(PageState(portfolio_at(9)), lambda: portfolio_at(10), NOW)
+    state = refresh(PageState(portfolio_at(9)), lambda: portfolio_at(10))
     assert headline(state) == "Team status as of 10:00" and state.error is None
 
 
@@ -46,7 +46,7 @@ def test_ac30_whole_refresh_fails_keeps_the_last_good_read():
     def broken():
         raise JiraError("Cannot reach Jira at https://site.example: ConnectionError.")
 
-    state = refresh(PageState(portfolio_at(9)), broken, NOW)
+    state = refresh(PageState(portfolio_at(9)), broken)
     text = headline(state)
     assert "Last good read 09:00" in text and "Cannot reach Jira" in text
     assert "as of 10:00" not in text and "as of" not in text
@@ -58,12 +58,12 @@ def test_every_team_failing_is_a_whole_failure():
         data = {"ALP": JiraError("Jira error 500."), "BET": JiraError("Jira error 500.")}
         return build_portfolio(CONFIG, data, datetime(2026, 12, 1, 15, tzinfo=UTC))
 
-    state = refresh(PageState(portfolio_at(9)), all_fail, NOW)
+    state = refresh(PageState(portfolio_at(9)), all_fail)
     assert headline(state) == "Could not refresh: Jira error 500. Last good read 09:00."
 
 
 def test_one_team_failing_is_not_a_whole_failure():  # N4.1: the row shows the error
-    state = refresh(PageState(portfolio_at(9)), lambda: portfolio_at(10, beta=JiraError("busy")), NOW)
+    state = refresh(PageState(portfolio_at(9)), lambda: portfolio_at(10, beta=JiraError("busy")))
     assert state.error is None
     assert any(r["Reason"] == "Could not read – busy" for r in table_rows(state.last_good))
 
@@ -136,3 +136,28 @@ def test_details_on_the_page():
 @pytest.mark.parametrize("path", ["app.py", "demo_app.py"])
 def test_page_files_exist(path):
     assert (ROOT / path).is_file()
+
+
+def test_first_read_where_every_team_fails_stops_the_page():  # S9 review
+    def page():
+        import app
+        from status_report.jira_client import JiraError as Error
+        from status_report.portfolio import build_portfolio as build
+        from status_report.run import load_settings
+
+        config = load_settings(demo=True)
+
+        def all_fail(*args, **kwargs):
+            results = {team.key: Error("Jira error 503.") for team in config.teams}
+            return build(config, results, __import__("status_report.demo").demo.demo_now())
+
+        real = app.read_portfolio
+        app.read_portfolio = all_fail
+        try:
+            app.main(demo=True)
+        finally:
+            app.read_portfolio = real  # The app module is shared with the other page tests
+
+    at = AppTest.from_function(page, default_timeout=30).run()
+    assert "Could not read any team: Jira error 503." in at.error[0].value
+    assert not at.dataframe

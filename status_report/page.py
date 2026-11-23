@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from status_report.jira_client import JiraError
@@ -25,7 +24,6 @@ class PageState:
 
     last_good: Portfolio | None = None
     error: str | None = None
-    failed_at: datetime | None = None
 
 
 def whole_read_failed(portfolio: Portfolio) -> str | None:
@@ -35,16 +33,16 @@ def whole_read_failed(portfolio: Portfolio) -> str | None:
     return None
 
 
-def refresh(state: PageState, read: Callable[[], Portfolio], now: datetime) -> PageState:
+def refresh(state: PageState, read: Callable[[], Portfolio]) -> PageState:
     """Read Jira again (spec R3.1). If the whole read fails, keep the last good read and
     show the error; the old data is never shown as new (N4.2)."""
     try:
         portfolio = read()
     except JiraError as error:
-        return PageState(state.last_good, str(error), now)
+        return PageState(state.last_good, str(error))
     failed = whole_read_failed(portfolio)
     if failed and state.last_good is not None:
-        return PageState(state.last_good, failed, now)
+        return PageState(state.last_good, failed)
     return PageState(portfolio)
 
 

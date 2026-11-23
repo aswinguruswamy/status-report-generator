@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import UTC, datetime
 
 import streamlit as st
 
@@ -24,6 +23,7 @@ from status_report.page import (
     headline,
     refresh,
     table_rows,
+    whole_read_failed,
 )
 from status_report.report import marked, report_name, to_markdown
 from status_report.run import load_settings, make_client, read_portfolio
@@ -39,6 +39,9 @@ def start(demo: bool) -> dict:
         config = load_settings(demo=demo)
         client = make_client(demo)
         first = read_portfolio(client, config, demo=demo, at_start=True)
+        failed = whole_read_failed(first)
+        if failed:  # No team could be read: not a good read (N4.2)
+            raise JiraError(f"Could not read any team: {failed}")
     except (ConfigError, JiraError) as error:
         st.error(str(error))
         st.stop()
@@ -78,7 +81,6 @@ def main(demo: bool | None = None) -> None:
         session["state"] = refresh(
             session["state"],
             lambda: read_portfolio(session["client"], session["config"], demo=demo),
-            datetime.now(UTC),
         )
     state = session["state"]
     if state.error:
