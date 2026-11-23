@@ -29,12 +29,26 @@ TICKET_FIELDS = [
 ]
 
 
+NO_TOKEN = "No Jira token found. Add JIRA_API_TOKEN to .env."
+BAD_TOKEN = "Jira did not accept the token. Make a new token and update .env."
+
+
 class JiraError(Exception):
     """A Jira problem. The message never contains the token."""
 
     def __init__(self, message: str, status: int | None = None):
         super().__init__(message)
         self.status = status  # HTTP status code, if Jira sent one
+
+
+class ProjectNotFound(JiraError):
+    """Jira does not know the project key in the settings file."""
+
+    def __init__(self, project_key: str):
+        super().__init__(
+            f"Project {project_key} not found in Jira. Check the key in settings.", status=404
+        )
+        self.project_key = project_key
 
 
 class JiraClient:
@@ -61,6 +75,10 @@ class JiraClient:
             pass
         names = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"]
         missing = [name for name in names if not os.environ.get(name, "").strip()]
+        if "JIRA_API_TOKEN" in missing:  # SRG-R13.3, AC27
+            others = [name for name in missing if name != "JIRA_API_TOKEN"]
+            also = f" Also add {', '.join(others)}." if others else ""
+            raise JiraError(NO_TOKEN + also)
         if missing:
             raise JiraError(
                 f"Missing in .env: {', '.join(missing)}. Copy .env.example to .env and add the values."
@@ -83,6 +101,15 @@ class JiraClient:
             me = self._get("/rest/api/3/myself")
         self._connected = True
         return me.get("displayName", "unknown user")
+
+    def check_project(self, project_key: str) -> None:
+        """Stop if Jira does not know the project (SRG-R13.2, AC26)."""
+        try:
+            self._get(f"/rest/api/3/project/{project_key}")
+        except JiraError as error:
+            if error.status == 404:
+                raise ProjectNotFound(project_key) from None
+            raise
 
     # --- reading -------------------------------------------------------
 
@@ -170,9 +197,7 @@ class JiraClient:
             f"{self.site_url}/_edge/tenant_info", timeout=TIMEOUT_SECONDS
         )
         if response.status_code != 200:
-            raise JiraError(
-                "Jira refused the token (401). Check JIRA_EMAIL and JIRA_API_TOKEN in .env."
-            )
+            raise JiraError(BAD_TOKEN, status=401)
         return response.json()["cloudId"]
 
     # --- conversion ----------------------------------------------------
@@ -240,10 +265,7 @@ class JiraClient:
                 self._sleep(wait)
                 continue
             if response.status_code == 401:
-                raise JiraError(
-                    "Jira refused the token (401). Check JIRA_EMAIL and JIRA_API_TOKEN in .env.",
-                    status=401,
-                )
+                raise JiraError(BAD_TOKEN, status=401)  # SRG-R13.3, AC28
             if response.status_code == 403:
                 raise JiraError(
                     "Jira refused access (403). The token needs the scopes "

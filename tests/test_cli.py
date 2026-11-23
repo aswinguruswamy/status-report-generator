@@ -37,7 +37,7 @@ class FakeClient:
 
 
 def run(tmp_path, *args, client=None, today=date(2026, 10, 22)):
-    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), *args]
+    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--project", "SRG", *args]
     return main(argv, client=client or FakeClient([ticket()]), today=today)
 
 
@@ -113,7 +113,7 @@ def test_jira_error_returns_error_code(tmp_path, capsys):
 def test_config_error_returns_error_code(tmp_path, capsys):
     argv = ["--config", str(tmp_path / "missing.yaml")]
     assert main(argv, client=FakeClient()) == EXIT_ERROR
-    assert "file not found" in capsys.readouterr().err
+    assert "was not found" in capsys.readouterr().err
 
 
 def test_wrong_option_value_stops_with_code_2(tmp_path):

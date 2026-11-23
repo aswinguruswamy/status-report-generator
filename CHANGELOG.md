@@ -5,6 +5,7 @@
 SRG v2 (spec `specs/spec.md` v1.3).
 
 - S1: The AI summary is removed: `ai.py`, `evaluation.py`, `eval/`, the `ai:` settings and the `anthropic` package (spec §2 non-goals).
+- S2: Settings v2: a `teams:` list (project key + team name); each v1 setting is optional with its v1 default; `timezone` defaults to the computer; new `forecast` setting. Clear start-up errors for no teams, a duplicate project, an unknown project, no token and a rejected token (SRG-R13.1–R13.3).
 
 ## v1.0.0 (2026-10-24)
 
