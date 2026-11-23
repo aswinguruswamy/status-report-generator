@@ -12,6 +12,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from status_report.config import PRIORITY_LEVELS, UNMAPPED, Config, Team
+from status_report.forecast import Forecast, team_forecast
 from status_report.metrics import NO_SPRINT_LABEL, colour_scope, local_today, window_counts
 from status_report.models import TeamData
 from status_report.project import key_order, team_status
@@ -51,7 +52,7 @@ class TeamRow:
     problems: tuple[ProblemTicket, ...] = ()
     warnings: tuple[str, ...] = ()
     error: str | None = None
-    forecast: object | None = None  # Added by the forecast (plan S7)
+    forecast: Forecast | None = None  # None when the forecast setting is off (R4)
 
     @property
     def progress(self) -> str:
@@ -138,6 +139,7 @@ def build_row(team: Team, data: TeamData | Exception, config: Config, now: datet
         opened=opened,
         problems=tuple(problems),
         warnings=status.warnings,
+        forecast=team_forecast(data, config, now) if config.forecast else None,
     )
 
 
