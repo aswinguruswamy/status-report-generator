@@ -2,7 +2,13 @@
 
 ## Unreleased (v2.0.0)
 
-SRG v2 (spec `specs/spec.md` v1.3).
+<!-- At the release: change the heading above to "## v2.0.0 (<date>)" and set the version in
+pyproject.toml to 2.0.0. The release workflow publishes this section as the release notes. -->
+
+SRG v2: one table for every team, a report on demand, and no AI (spec `specs/spec.md` v1.3).
+Public demo with made-up data: https://srg-app.streamlit.app
+
+### Stories in this release
 
 - S1: The AI summary is removed: `ai.py`, `evaluation.py`, `eval/`, the `ai:` settings and the `anthropic` package (spec §2 non-goals).
 - S2: Settings v2: a `teams:` list (project key + team name); each v1 setting is optional with its v1 default; `timezone` defaults to the computer; new `forecast` setting. Clear start-up errors for no teams, a duplicate project, an unknown project, no token and a rejected token (SRG-R13.1–R13.3).
@@ -13,6 +19,21 @@ SRG v2 (spec `specs/spec.md` v1.3).
 - S7: Forecast: the 85% date to finish all open counted tickets, from the MCF simulation (`mcf.forecast.api.forecast_from_counts`, fixed seed) on daily closed counts of the last 84 days; "Planned <date>" from the next release and "later than planned"; "Not enough history yet – needs 12 weeks" under 84 days of history. New dependency: `mcf` (pinned to an MCF commit).
 - S8: The portfolio Markdown report `SRG_<yyyy-mm-dd>_<hhmm>.md` (as-of time, team table, reason per team, Black/Red/Amber tickets per team, "Sample data" in demo mode). `status-report` writes it (`--config`, `--output`, `--demo`). Removed: the v1 weekly report (Markdown and HTML), the weekly options and the v1 weekly code.
 - S9: The web page (Streamlit): the team table with every colour as a word, "as of hh:mm", a team's Black/Red/Amber tickets on a row click (Jira links for real data), Refresh (a failed refresh shows the error and "Last good read hh:mm"), Generate report (download), and "Sample data" in demo mode. `demo_app.py` is the keyless public demo.
+
+### Verified
+
+- Every acceptance criterion of the spec has an automatic test, except the manual checks below.
+- The demo data goes through the real Jira client, rules and report in the tests (offline).
+- Each pull request had an independent review; CI runs the secret scan, style check, dependency
+  and licence scans, and the tests on Python 3.11, 3.12 and 3.13.
+
+### Known limits
+
+- Tested on Jira Cloud **team-managed** projects only.
+- One team = one Jira project. No programs, history or "what changed".
+- The forecast needs 12 weeks (84 days) of history from the first closed ticket.
+- Not yet checked by hand: 10 teams with real Jira in under 15 seconds (AC44) and a ticket link
+  that opens Jira (AC42).
 
 ## v1.0.0 (2026-10-24)
 
