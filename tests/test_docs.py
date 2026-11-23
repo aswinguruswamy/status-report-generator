@@ -47,7 +47,7 @@ def test_readme_links_to_files_in_docs():
 
 def test_known_limits_is_the_first_section():
     # Shared item SH5: "Known limits" at the top of every README (SRG v2 spec N8).
-    first = [line for line in README.splitlines() if line.startswith("## ")][0]
+    first = next(line for line in README.splitlines() if line.startswith("## "))
     assert first == "## Known limits"
 
 
