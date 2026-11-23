@@ -42,6 +42,7 @@ jobs:
         run: pytest
 
   # The README tells users to install Python 3.12. The tool supports 3.11 and newer.
+  # 3.14: Streamlit Community Cloud runs the public demo on Python 3.14.
   # These jobs run the tests on the newer versions too (SRG-37).
   python-versions:
     name: Tests on Python ${{ matrix.python }}
@@ -49,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.12", "3.13"]
+        python: ["3.12", "3.13", "3.14"]
     steps:
       - name: Get the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

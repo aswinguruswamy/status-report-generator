@@ -26,7 +26,7 @@ Public demo with made-up data: https://srg-app.streamlit.app
 - Every acceptance criterion of the spec has an automatic test, except the manual checks below.
 - The demo data goes through the real Jira client, rules and report in the tests (offline).
 - Each pull request had an independent review; CI runs the secret scan, style check, dependency
-  and licence scans, and the tests on Python 3.11, 3.12 and 3.13.
+  and licence scans, and the tests on Python 3.11, 3.12, 3.13 and 3.14.
 
 ### Known limits
 
