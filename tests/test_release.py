@@ -77,7 +77,9 @@ def test_v2_notes_are_ready_for_the_release():
 def test_ci_tests_every_supported_python_version():
     # The public demo runs on Python 3.14 (Streamlit Community Cloud).
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
-    versions = {workflow["jobs"]["checks"]["steps"][2]["with"]["python-version"]}
+    setup = [step for step in workflow["jobs"]["checks"]["steps"]
+             if "actions/setup-python" in step.get("uses", "")]
+    versions = {step["with"]["python-version"] for step in setup}
     versions |= set(workflow["jobs"]["python-versions"]["strategy"]["matrix"]["python"])
     assert versions == {"3.11", "3.12", "3.13", "3.14"}
     assert workflow["jobs"]["python-versions"]["name"] == "Tests on Python ${{ matrix.python }}"
