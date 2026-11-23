@@ -1,143 +1,140 @@
-"""Tests for the Markdown report: safe text (SRG-35, D42) and layout (SRG-27, D45).
-
-B1: a line break in a title broke the table row.
-B2: raw HTML in a title went into the .md file.
-"""
+"""The portfolio report (spec SRG-R12.1, SRG-R12.2, SRG-R14.2, N9; AC34, AC35, AC36; plan S8)."""
 
 from __future__ import annotations
 
+import importlib.util
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, datetime
+from pathlib import Path
 
-from test_metrics import CONFIG, at, change, ticket
-from test_random import _table_rows_complete
+from v2_tickets import CONFIG, NOW, ticket
 
-from status_report.metrics import calculate, tickets_in_week
-from status_report.project import project_status
-from status_report.report import (
-    MD_SECTIONS,
-    _md_cell,
-    report_name,
-    to_markdown,
-    write_report,
-)
+from status_report.jira_client import JiraError
+from status_report.models import TeamData
+from status_report.portfolio import build_portfolio
+from status_report.report import report_name, to_markdown, write_report
+from status_report.run import load_settings, make_client, read_portfolio
 
-START, END = date(2026, 10, 19), date(2026, 10, 25)
+ROOT = Path(__file__).resolve().parent.parent
+GOLDEN = ROOT / "examples" / "SRG_2026-12-01_0942.md"
 
 
-def report(title: str) -> str:
-    tickets = [replace(ticket("SRG-1"), title=title)]
-    metrics = calculate(tickets, CONFIG, START, END)
-    status = project_status(tickets, metrics, CONFIG)
-    return to_markdown(tickets, metrics, status, "SRG")
+def data(key, tickets, browse="https://site.example/browse/"):
+    from v2_tickets import SPRINT
+
+    return TeamData(key, tuple(tickets), (SPRINT,), None, None, NOW, browse)
 
 
-def ticket_row(markdown: str) -> str:
-    return next(line for line in markdown.splitlines() if line.startswith("| SRG-1 "))
+def portfolio(alpha=(), beta=(), sample=False, read_at=NOW):
+    results = {"ALP": data("ALP", alpha), "BET": beta if isinstance(beta, Exception) else data("BET", beta)}
+    return build_portfolio(CONFIG, results, read_at, sample=sample)
 
 
-def test_line_break_in_a_title_keeps_one_row():  # B1
-    markdown = report("Line one\nline two\r\nline three")
-    assert "Line one line two line three" in ticket_row(markdown)
-    assert _table_rows_complete(markdown)
-
-
-def test_raw_html_in_a_title_shows_as_text():  # B2
-    row = ticket_row(report("<script>alert(1)</script> <b>x</b>"))
-    assert "<script>" not in row and "<b>" not in row
-    assert "&lt;script&gt;alert(1)&lt;/script&gt; &lt;b&gt;x&lt;/b&gt;" in row
-
-
-def test_pipe_and_ampersand_are_escaped():
-    assert _md_cell("A | B & C") == "A \\| B &amp; C"
-
-
-def test_quotes_and_unicode_stay_as_they_are():
-    assert _md_cell("Quote \" and ' — Ünïcødé ✓") == "Quote \" and ' — Ünïcødé ✓"
-
-
-def test_check_finds_a_broken_row():
-    assert not _table_rows_complete("| A | B |\n|---|---|\n| 1 | 2 | 3 |")
-    assert _table_rows_complete("| A | B |\n|---|---|\n| 1 \\| x | 2 |")
-
-
-# --- Markdown layout (SRG-27, D45) ------------------------------------------------------
-
-def red_week():
-    tickets = [
-        replace(ticket("SRG-1", created=at(5), history=[change(at(20), "To Do", "Blocked")]),
-                priority="Highest", title="Blocked work", assignee="Jane Doe"),
-        replace(ticket("SRG-2", created=at(5), due=date(2026, 10, 21)),
-                priority="High", title="Overdue work", assignee=None),
-        replace(ticket("SRG-3", history=[change(at(21), "To Do", "Done")]),
-                title="Closed work", assignee="Sam Lee"),
-        replace(ticket("SRG-4", created=at(5)), title="Green work"),
-    ]
-    metrics = calculate(tickets, CONFIG, START, END)
-    week = tickets_in_week(tickets, metrics)
-    return week, metrics, project_status(week, metrics, CONFIG)
-
-
-def md(**kwargs):
-    week, metrics, status = red_week()
-    return to_markdown(week, metrics, status, "SRG", generated=date(2026, 10, 26), **kwargs)
+def demo_portfolio():
+    config = load_settings(demo=True)
+    return read_portfolio(make_client(demo=True), config, demo=True, at_start=True)
 
 
 def section(text: str, title: str) -> str:
-    return text.split(f"## {title}\n", 1)[1].split("\n## ", 1)[0]
+    return text.split(f"## {title}", 1)[1].split("\n## ", 1)[0]
 
 
-def test_sections_are_in_the_agreed_order():
-    headings = [line[3:] for line in md().splitlines() if line.startswith("## ")]
-    assert headings == list(MD_SECTIONS)
+# --- AC34: file name and content from the same data (golden file) ------------------------------
 
 
-def test_header_has_project_week_and_report_date():
-    lines = md().splitlines()
-    assert lines[0] == "# Weekly Status Report: SRG"
-    assert lines[2] == "Week 43: 2026-10-19 to 2026-10-25 · Report date: 2026-10-26"
+def test_ac34_file_name_has_the_read_date_and_time(tmp_path):
+    read_at = datetime(2026, 12, 1, 14, 42, tzinfo=UTC)  # 09:42 in Toronto
+    table = portfolio(read_at=read_at)
+    assert report_name(table) == "SRG_2026-12-01_0942.md"
+    path = write_report(table, tmp_path / "output")
+    assert path.name == "SRG_2026-12-01_0942.md" and path.read_text(encoding="utf-8") == to_markdown(table)
 
 
-def test_each_status_has_a_mark_and_a_word():  # D21
-    text = md()
-    assert "🔴 **RED** – Red:" in text
-    for row in ("| ⚫ Black |", "| 🔴 Red |", "| 🟠 Amber |", "| 🟢 Green |"):
-        assert row in section(text, "Priority matrix")
-    assert "| SRG-3 | Closed work | Story | ✅ Done |" in section(text, "All tickets")
+def test_ac34_golden_file_matches_the_demo_report():
+    spec = importlib.util.spec_from_file_location("make_sample", ROOT / "scripts" / "make_sample.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    expected = module.build()
+    assert list(expected) == ["SRG_2026-12-01_0942.md"]
+    assert GOLDEN.read_text(encoding="utf-8") == expected[GOLDEN.name], (
+        "examples/ is old. Run: python scripts/make_sample.py"
+    )
 
 
-def test_blocked_list_has_key_title_owner_priority_and_days():
-    blocked = section(md(), "Blocked tickets")
-    assert "| Key | Title | Owner | Priority | Days blocked |" in blocked
-    assert "| SRG-1 | Blocked work | Jane Doe | Highest | 5 |" in blocked
+def test_ac34_report_content_equals_the_page_data():
+    table = demo_portfolio()
+    text = to_markdown(table)
+    assert "As of 2026-12-01 09:42 (America/Toronto)" in text
+    for row in table.rows:
+        assert f"| {row.name} |" in text and row.reason in text and row.progress in text
+        assert row.forecast.text in text
+        assert f"## {row.name} – " in text
+        for problem in row.problems:
+            assert f"| {problem.key} | {problem.title} |" in text
 
 
-def test_overdue_and_closed_lists():
-    text = md()
-    assert "| SRG-2 | Overdue work | Unassigned | High | 2026-10-21 | 5 |" in section(text, "Overdue tickets")
-    assert "| SRG-3 | Closed work | Story | Sam Lee | High |" in section(text, "Closed this week")
-    assert "SRG-4" not in section(text, "Closed this week")
+# --- AC35: Black, Red and Amber tickets under each team --------------------------------------
 
 
-def test_empty_lists_say_none():
-    tickets = [ticket("SRG-9", created=at(5))]
-    metrics = calculate(tickets, CONFIG, START, END)
-    text = to_markdown(tickets, metrics, project_status(tickets, metrics, CONFIG), "SRG")
-    for title in ("Blocked tickets", "Overdue tickets", "Closed this week"):
-        assert section(text, title).strip() == "None."
+def test_ac35_two_red_tickets_are_both_listed_under_beta():
+    beta = [ticket("BET-2", priority="Highest", status="Blocked", due=9),
+            ticket("BET-5", priority="Low", status="Blocked", due=9),
+            ticket("BET-8", priority="Low", due=9)]  # Green: not listed
+    text = to_markdown(portfolio(beta=beta))
+    beta_part = section(text, "Beta – 🔴 Red")
+    assert "[BET-2](https://site.example/browse/BET-2)" in beta_part
+    assert "[BET-5](https://site.example/browse/BET-5)" in beta_part
+    assert "BET-8" not in beta_part
+    assert "| Highest | 🔴 Red | Blocked |" in beta_part
 
 
-def test_file_name_has_project_and_iso_week(tmp_path):
-    assert report_name("SRG", date(2026, 10, 19)) == "SRG-2026-W43"
-    assert report_name("SRG", date(2026, 12, 28)) == "SRG-2026-W53"  # 2026 has 53 ISO weeks
-    assert report_name("ABC", date(2027, 1, 4)) == "ABC-2027-W01"
-    week, metrics, status = red_week()
-    paths = write_report(week, metrics, status, "SRG", tmp_path / "output", ("markdown",))
-    assert [p.name for p in paths] == ["SRG-2026-W43.md"]
+def test_team_without_problem_tickets_says_so():
+    text = to_markdown(portfolio(beta=[ticket("BET-1", due=9)]))
+    assert "No Black, Red or Amber tickets." in section(text, "Beta – 🟢 Green")
 
 
-def test_output_folder_is_ignored_by_git():  # D24
-    from pathlib import Path
+# --- Sample data label (R14.2, AC36) and errors (N4.1) -------------------------------------------
 
-    ignore = (Path(__file__).resolve().parent.parent / ".gitignore").read_text().splitlines()
-    assert "output/" in ignore
+
+def test_ac36_sample_data_label_only_in_demo_mode():
+    assert "**Sample data.**" in to_markdown(portfolio(sample=True))
+    assert "Sample data" not in to_markdown(portfolio(sample=False))
+
+
+def test_sample_data_has_no_links():
+    text = GOLDEN.read_text(encoding="utf-8")
+    assert "](" not in text and "**Sample data.**" in text
+
+
+def test_team_that_could_not_be_read_is_in_the_report():
+    text = to_markdown(portfolio(beta=JiraError("Jira error 500 on /rest/api/3/project/BET.")))
+    assert "| Beta | Could not read | – | – | Could not read – Jira error 500" in text
+    assert "## Beta – Could not read" in text
+
+
+# --- Safe text and accessibility (N9) ------------------------------------------------------------
+
+
+def test_titles_cannot_break_the_markdown():
+    bad = replace(ticket("BET-1", priority="Highest", status="Blocked", due=9),
+                  title="Line one\nline two | <script>x</script>")
+    text = to_markdown(portfolio(beta=[bad]))
+    assert "Line one line two \\| &lt;script&gt;x&lt;/script&gt;" in text
+    assert "<script>" not in text
+
+
+def test_every_colour_has_a_word():
+    text = GOLDEN.read_text(encoding="utf-8")
+    for mark, word in (("⚫", "Black"), ("🔴", "Red"), ("🟠", "Amber"), ("🟢", "Green")):
+        assert f"{mark} {word}" in text
+
+
+def test_warnings_section():
+    text = to_markdown(portfolio(beta=[ticket("BET-3", priority="Urgent", due=9)]))
+    assert "## Warnings" in text and "BET-3: priority 'Urgent'" in section(text, "Warnings")
+
+
+def test_no_html_report_any_more():
+    from status_report import report
+
+    assert not hasattr(report, "to_html")

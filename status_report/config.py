@@ -67,11 +67,6 @@ class Config:
     amber_status_category: str = NOT_STARTED
     high_priorities: tuple[str, ...] = HIGH_PRIORITIES
 
-    @property
-    def project_key(self) -> str:
-        """The first team's project key (the v1 weekly command reads one project)."""
-        return self.teams[0].key
-
     def priority_level(self, jira_priority: str | None) -> str:
         """Return P1 to P5 for a Jira priority name, or "Unmapped"."""
         if jira_priority is None:

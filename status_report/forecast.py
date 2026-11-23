@@ -16,7 +16,7 @@ from mcf.forecast.api import forecast_from_counts
 from mcf.forecast.montecarlo import MonteCarloError
 
 from status_report.config import Config
-from status_report.metrics import closed_at, is_counted, is_open_v2, local_today
+from status_report.metrics import closed_at, is_counted, is_open, local_today
 from status_report.models import TeamData
 
 HISTORY_DAYS = 84  # 12 weeks (spec R4.1, R4.3)
@@ -70,7 +70,7 @@ def team_forecast(data: TeamData, config: Config, now: datetime) -> Forecast:
     planned = data.next_release.release_date if data.next_release else None
     if history_days(data.first_closed, today, config.timezone) < HISTORY_DAYS:
         return Forecast(NOT_ENOUGH_HISTORY, planned=planned)
-    backlog = sum(1 for t in data.tickets if is_counted(t, config) and is_open_v2(t))
+    backlog = sum(1 for t in data.tickets if is_counted(t, config) and is_open(t))
     if backlog == 0:
         return Forecast(NO_OPEN_TICKETS, planned=planned)
     try:

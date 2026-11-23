@@ -1,44 +1,31 @@
 """Connection check: python -m status_report.check_jira
 
-Reads the tickets of the last 7 days and prints a short summary.
+Reads every team in config.yaml and prints a short summary for each one.
 It prints no token and changes nothing in Jira.
 """
 
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
-from status_report.config import ConfigError, load_config
-from status_report.jira_client import JiraClient, JiraError
+from status_report.config import ConfigError
+from status_report.jira_client import JiraError
+from status_report.run import load_settings, make_client, read_portfolio
 
 
 def main() -> int:
     try:
-        config = load_config()
-        client = JiraClient.from_env()
+        config = load_settings()
+        client = make_client()
         user = client.connect()
-        end = datetime.now(ZoneInfo(config.timezone)).date()
-        start = end - timedelta(days=6)
-        tickets = client.fetch_tickets(
-            config.project_key,
-            config.work_types,
-            start,
-            end,
-            need_flag="flag" in config.blocked_methods,
-        )
+        portfolio = read_portfolio(client, config, at_start=True)
     except (ConfigError, JiraError) as error:
         print(f"ERROR: {error}")
         return 1
-
     print(f"Connected as: {user}")
     print(f"Address used: {client.api_url}")
-    print(f"Project {config.project_key}, {start} to {end}: {len(tickets)} tickets")
-    for ticket in tickets[:5]:
-        print(f"  {ticket.key}  {ticket.status:<12} {ticket.priority or '-':<8} {ticket.title[:50]}")
-    if len(tickets) > 5:
-        print(f"  ... and {len(tickets) - 5} more")
+    for row in portfolio.rows:
+        print(f"  {row.key:<8} {row.name:<20} {row.progress:<22} {row.colour or row.reason}")
     return 0
 
 

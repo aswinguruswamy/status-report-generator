@@ -1,170 +1,75 @@
-"""Tests for the command line (SRG-18)."""
+"""The command: status-report (spec SRG-R12, R13.2, R13.3, R14.1; plan S8)."""
 
-from datetime import UTC, date, datetime
-from pathlib import Path
+from __future__ import annotations
 
 import pytest
+from test_jira_v2 import client_for, jira
 
-from status_report.cli import EXIT_ERROR, EXIT_OK, last_full_week, main, week_range
-from status_report.jira_client import JiraError
-from status_report.models import Ticket
-
-REPO_CONFIG = str(Path(__file__).resolve().parent.parent / "config.yaml")
+from status_report.cli import EXIT_ERROR, EXIT_OK, main
 
 
-def ticket(key="SRG-1", title="Read tickets | Jira"):
-    return Ticket(
-        key=key, title=title, work_type="Story", status="To Do", status_category="To Do",
-        priority="High", assignee="Person A", due_date=date(2026, 10, 24),
-        created=datetime(2026, 10, 20, tzinfo=UTC), done_date=None, resolved=None,
-    )
+def write_settings(tmp_path, keys=("ALP", "BET")):
+    lines = ["teams:"] + [f"  - {{key: {k}, name: Team {k}}}" for k in keys] + ["timezone: UTC"]
+    path = tmp_path / "config.yaml"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return str(path)
 
 
-class FakeClient:
-    def __init__(self, tickets=None, error=None):
-        self.tickets = tickets or []
-        self.error = error
-        self.request = None
-
-    def connect(self):
-        if self.error:
-            raise self.error
-        return "Aswin"
-
-    def fetch_tickets(self, project, work_types, start, end, need_flag=False):
-        self.request = (project, work_types, start, end)
-        return self.tickets
-
-
-def run(tmp_path, *args, client=None, today=date(2026, 10, 22)):
-    argv = ["--config", REPO_CONFIG, "--output", str(tmp_path), "--project", "SRG", *args]
-    return main(argv, client=client or FakeClient([ticket()]), today=today)
-
-
-# --- Week rules ---------------------------------------------------------------
-
-def test_week_range_is_monday_to_sunday():
-    assert week_range(date(2026, 10, 22)) == (date(2026, 10, 19), date(2026, 10, 25))
-    assert week_range(date(2026, 10, 19)) == (date(2026, 10, 19), date(2026, 10, 25))
-    assert week_range(date(2026, 10, 25)) == (date(2026, 10, 19), date(2026, 10, 25))
-
-
-def test_last_full_week_is_the_week_before():
-    assert last_full_week(date(2026, 10, 22)) == (date(2026, 10, 12), date(2026, 10, 18))
-    assert last_full_week(date(2026, 10, 19)) == (date(2026, 10, 12), date(2026, 10, 18))
-
-
-def test_no_week_given_uses_last_full_week(tmp_path):
-    client = FakeClient([ticket()])
-    assert run(tmp_path, client=client) == EXIT_OK
-    assert client.request[2:] == (date(2026, 10, 12), date(2026, 10, 18))
-
-
-def test_week_option(tmp_path):
-    client = FakeClient([ticket()])
-    run(tmp_path, "--week", "2026-10-21", client=client)
-    assert client.request[2:] == (date(2026, 10, 19), date(2026, 10, 25))
-
-
-def test_project_option_overrides_config(tmp_path):
-    client = FakeClient([ticket()])
-    run(tmp_path, "--project", "ABC", client=client)
-    assert client.request[0] == "ABC"
-
-
-# --- Output -------------------------------------------------------------------
-
-def test_both_formats_and_report_path_is_shown(tmp_path, capsys):
-    assert run(tmp_path, "--week", "2026-10-19", "--format", "both") == EXIT_OK
-    md = tmp_path / "SRG-2026-W43.md"
-    page = tmp_path / "SRG-2026-W43.html"
-    assert md.is_file() and page.is_file()
+def test_demo_writes_the_report_without_a_token(tmp_path, capsys, monkeypatch):
+    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
+    assert main(["--demo", "--output", str(tmp_path)]) == EXIT_OK
     out = capsys.readouterr().out
-    assert "1/3" in out and "2/3" in out and "3/3" in out
-    assert f"Report: {md.resolve()}" in out
+    assert "Team status as of 09:42" in out and "🔴 Red" in out
+    path = tmp_path / "SRG_2026-12-01_0942.md"
+    assert path.is_file() and "**Sample data.**" in path.read_text(encoding="utf-8")
 
 
-def test_md_format_only(tmp_path):
-    run(tmp_path, "--week", "2026-10-19", "--format", "md")
-    assert [p.suffix for p in tmp_path.iterdir()] == [".md"]
+def test_real_read_with_a_fake_jira(tmp_path, capsys):
+    client, _ = client_for(jira())
+    code = main(["--config", write_settings(tmp_path), "--output", str(tmp_path)], client=client)
+    assert code == EXIT_OK
+    assert "Team ALP" in capsys.readouterr().out
+    assert len(list(tmp_path.glob("SRG_*.md"))) == 1
 
 
-def test_markdown_escapes_the_table_separator(tmp_path):
-    run(tmp_path, "--week", "2026-10-19", "--format", "md")
-    text = (tmp_path / "SRG-2026-W43.md").read_text()
-    assert "Read tickets \\| Jira" in text
+def test_ac26_unknown_project_stops_at_start(tmp_path, capsys):
+    client, _ = client_for(jira())
+    code = main(["--config", write_settings(tmp_path, ("ALP", "XYZ")), "--output", str(tmp_path)],
+                client=client)
+    assert code == EXIT_ERROR
+    assert "Project XYZ not found in Jira. Check the key in settings." in capsys.readouterr().err
+    assert not list(tmp_path.glob("SRG_*.md"))
 
 
-def test_html_escapes_ticket_titles(tmp_path):
-    client = FakeClient([ticket(title="<script>x</script>")])
-    run(tmp_path, "--week", "2026-10-19", "--format", "html", client=client)
-    text = (tmp_path / "SRG-2026-W43.html").read_text()
-    assert "<script>" not in text and "&lt;script&gt;" in text
+def test_ac27_no_token_stops(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setenv("JIRA_BASE_URL", "https://example.atlassian.net")
+    monkeypatch.setenv("JIRA_EMAIL", "a@b.com")
+    monkeypatch.delenv("JIRA_API_TOKEN", raising=False)
+    assert main(["--config", write_settings(tmp_path)]) == EXIT_ERROR
+    assert "No Jira token found. Add JIRA_API_TOKEN to .env." in capsys.readouterr().err
 
 
-# --- Errors and exit codes ----------------------------------------------------
-
-def test_jira_error_returns_error_code(tmp_path, capsys):
-    client = FakeClient(error=JiraError("Jira refused the token (401)."))
-    assert run(tmp_path, client=client) == EXIT_ERROR
-    assert "ERROR: Jira refused the token" in capsys.readouterr().err
-
-
-def test_config_error_returns_error_code(tmp_path, capsys):
-    argv = ["--config", str(tmp_path / "missing.yaml")]
-    assert main(argv, client=FakeClient()) == EXIT_ERROR
-    assert "was not found" in capsys.readouterr().err
+def test_ac24_empty_settings_stop(tmp_path, capsys):
+    path = tmp_path / "config.yaml"
+    path.write_text("", encoding="utf-8")
+    assert main(["--config", str(path)]) == EXIT_ERROR
+    assert "The settings file has no teams. Add a project key and a team name." in capsys.readouterr().err
 
 
-def test_wrong_option_value_stops_with_code_2(tmp_path):
-    with pytest.raises(SystemExit) as stop:
-        run(tmp_path, "--format", "pdf")
-    assert stop.value.code == 2
-
-
-def test_help_lists_all_options(capsys):
+def test_help_lists_the_options(capsys):
     with pytest.raises(SystemExit) as stop:
         main(["--help"])
     assert stop.value.code == 0
     out = capsys.readouterr().out
-    for option in ["--project", "--week", "--output", "--format", "--config"]:
+    for option in ("--config", "--output", "--demo"):
         assert option in out
+    for old in ("--week", "--format", "--project", "--no-ai"):
+        assert old not in out
 
 
-def test_report_and_progress_show_the_weekly_numbers(tmp_path, capsys):
-    run(tmp_path, "--week", "2026-10-19", "--format", "md")
-    out = capsys.readouterr().out
-    assert "closed 0, opened 1, open 1, blocked 0, overdue 0" in out
-    text = (tmp_path / "SRG-2026-W43.md").read_text()
-    assert "## Key numbers" in text
-    assert "| Opened this week | 1 |" in text
+def test_output_folder_is_ignored_by_git():
+    from pathlib import Path
 
-
-def test_command_depends_on_the_interface_not_on_jira():
-    # D01: a second source (GitHub, v2) needs no change in the command.
-    from status_report import cli
-
-    assert not hasattr(cli, "JiraClient")
-    assert hasattr(cli, "TicketSource")
-
-
-def test_report_shows_project_status_matrix_and_ticket_status(tmp_path, capsys):
-    run(tmp_path, "--week", "2026-10-19", "--format", "both")
-    out = capsys.readouterr().out
-    # SRG-1 is P2, due in 2 days, and still in To Do: Amber (D22).
-    assert ("Project status: Amber: 1 P2 ticket is due soon and not started (SRG-1); "
-            "the team closed 0 and opened 1 tickets.") in out
-    text = (tmp_path / "SRG-2026-W43.md").read_text()
-    for section in ("## Project status", "## Key numbers", "## Priority matrix", "## All tickets"):
-        assert section in text
-    assert "**AMBER** – Amber:" in text
-    assert "| SRG-1 | Read tickets \\| Jira | Story | 🟠 Amber | To Do | High | 2026-10-24 |" in text
-    page = (tmp_path / "SRG-2026-W43.html").read_text()
-    assert "<h2>Priority matrix</h2>" in page and '<span class="st st-amber">Amber</span> Amber:' in page
-
-
-def test_no_ai_option_is_gone(capsys):
-    # v2 spec §2: no AI in SRG v2.
-    with pytest.raises(SystemExit):
-        main(["--help"])
-    assert "--no-ai" not in capsys.readouterr().out
+    ignore = (Path(__file__).resolve().parent.parent / ".gitignore").read_text().splitlines()
+    assert "output/" in ignore

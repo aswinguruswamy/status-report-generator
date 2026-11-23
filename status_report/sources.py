@@ -1,42 +1,11 @@
-"""Data sources for tickets (D01).
-
-The command uses only this interface. The Jira client is the v1 source.
-A GitHub Issues source (v2) can implement the same two methods.
-"""
+"""Reads every team from Jira, 4 at a time (spec SRG-R3.1, N3, N4.1; plan SD3)."""
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Protocol
+from concurrent.futures import ThreadPoolExecutor
+from zoneinfo import ZoneInfo
 
-from status_report.models import Ticket
-
-
-class TicketSource(Protocol):
-    def connect(self) -> str:
-        """Check the access. Return the name of the account."""
-        ...
-
-    def fetch_tickets(
-        self,
-        project_key: str,
-        work_types: tuple[str, ...],
-        start: date,
-        end: date,
-        need_flag: bool = False,
-    ) -> list[Ticket]:
-        """Return the tickets that can matter for the week. The tool filters them exactly."""
-        ...
-
-
-def default_source() -> TicketSource:
-    """The v1 source: Jira, with the values from .env."""
-    from status_report.jira_client import JiraClient
-
-    return JiraClient.from_env()
-
-
-# --- v2: read every team, 4 at a time (spec SRG-R3.1, N3, N4.1; plan SD3) ---------------
+from status_report.jira_client import JiraError
 
 MAX_PARALLEL_READS = 4
 HISTORY_DAYS = 84  # Forecast window (spec R4.1)
@@ -50,11 +19,6 @@ def read_teams(client, config, read_at, keys=None) -> dict:
     (spec N4.1). An error that stops every read (no connection, token not accepted) is
     raised by client.prepare() before the parallel reads start.
     """
-    from concurrent.futures import ThreadPoolExecutor
-    from zoneinfo import ZoneInfo
-
-    from status_report.jira_client import JiraError
-
     keys = list(keys) if keys is not None else [team.key for team in config.teams]
     need_flag = "flag" in config.blocked_methods
     client.prepare(need_flag)
