@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from status_report.config import Config, load_config
+from status_report.config import Config, ConfigError, load_config
 from status_report.jira_client import JiraClient, ProjectNotFound
 from status_report.portfolio import Portfolio, build_portfolio
 from status_report.sources import read_teams
@@ -17,6 +17,10 @@ def load_settings(path: str | Path | None = None, demo: bool = False) -> Config:
         from status_report.demo import CONFIG_FILE
 
         path = CONFIG_FILE if demo else "config.yaml"
+        if demo and not CONFIG_FILE.is_file():
+            raise ConfigError(
+                "The sample data in demo/ was not found. Run the demo from a copy of the repository."
+            )
     return load_config(path)
 
 

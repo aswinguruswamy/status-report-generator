@@ -34,10 +34,16 @@ def report_name(portfolio: Portfolio) -> str:
     return f"SRG_{local:%Y-%m-%d}_{local:%H%M}.md"
 
 
+MARKDOWN_SIGNS = "\\`*_[]"  # Backslash first
+
+
 def _text(value: object) -> str:
-    """Text from Jira, safe for one Markdown line: HTML shows as text, no line breaks."""
-    text = html.escape(str(value), quote=False)
-    return " ".join(text.split())
+    """Text from Jira, safe for one Markdown line: HTML and Markdown signs show as text
+    (no live link, no bold), and there are no line breaks."""
+    text = " ".join(str(value).split())
+    for sign in MARKDOWN_SIGNS:
+        text = text.replace(sign, "\\" + sign)
+    return html.escape(text, quote=False)
 
 
 def _cell(value: object) -> str:
@@ -55,7 +61,10 @@ def _forecast(row: TeamRow) -> str:
 
 
 def _key(key: str, url: str | None) -> str:
-    return f"[{_cell(key)}]({url})" if url else _cell(key)
+    if not url:
+        return _cell(key)
+    safe = url.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+    return f"[{_cell(key)}]({safe})"
 
 
 def _team_section(row: TeamRow) -> list[str]:

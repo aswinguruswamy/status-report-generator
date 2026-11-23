@@ -138,3 +138,22 @@ def test_no_html_report_any_more():
     from status_report import report
 
     assert not hasattr(report, "to_html")
+
+
+def test_markdown_signs_in_titles_show_as_text():  # S8 review
+    bad = replace(ticket("BET-1", priority="Highest", status="Blocked", due=9),
+                  title="[Approve](https://evil.example) *bold* _x_ `code` back\\")
+    text = to_markdown(portfolio(beta=[bad]))
+    assert "\\[Approve\\](https://evil.example) \\*bold\\* \\_x\\_ \\`code\\` back\\\\" in text
+    assert "[Approve](" not in text
+
+
+def test_demo_without_the_sample_files_gives_a_clear_error(monkeypatch, tmp_path):  # S8 review
+    import pytest
+
+    from status_report import demo
+    from status_report.config import ConfigError
+
+    monkeypatch.setattr(demo, "CONFIG_FILE", tmp_path / "missing.yaml")
+    with pytest.raises(ConfigError, match="Run the demo from a copy of the repository"):
+        load_settings(demo=True)
