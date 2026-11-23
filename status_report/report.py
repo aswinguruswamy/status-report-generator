@@ -150,7 +150,6 @@ class Section:
     rows: tuple[tuple, ...] = ()
     items: tuple[str, ...] = ()  # A list
     text: tuple[str, ...] = ()  # Paragraphs
-    note: str = ""  # Shown in italics after the text
     empty: str = ""  # Shown when there is no table row, item, or text
 
 
@@ -220,8 +219,6 @@ def to_markdown(
         body += [f"- {_md_text(i)}" for i in sec.items]
         for paragraph in sec.text:
             body += [_md_text(paragraph)]
-        if sec.note:
-            body += ["", f"_{sec.note}_"]
         lines += body or [sec.empty]
     return "\n".join(lines) + "\n"
 
@@ -300,8 +297,6 @@ def to_html(
         if sec.items:
             body.append("<ul>" + "".join(f"<li>{html.escape(i)}</li>" for i in sec.items) + "</ul>")
         body += [f"<p>{html.escape(t)}</p>" for t in sec.text]
-        if sec.note:
-            body.append(f"<p class='note'>{html.escape(sec.note)}</p>")
         parts += body or [f"<p class='note'>{html.escape(sec.empty)}</p>"]
     parts.append("</body></html>\n")
     return "".join(parts)

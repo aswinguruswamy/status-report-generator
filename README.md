@@ -23,8 +23,7 @@ page and a report on demand. The v1 AI summary is removed (it stays in the v1.0.
 ## The problem
 
 Each week, a project manager reads Jira, counts the work, decides on a status colour, and
-writes the summary. This takes time. Two managers can give the same week different colours.
-An AI tool alone can write a good text, but it can also make up a status or a fact.
+writes the report. This takes time. Two managers can give the same week different colours.
 
 This tool makes the report in less than 2 minutes. Rules set the status, so the same week
 always gets the same colour.
@@ -32,7 +31,7 @@ always gets the same colour.
 ## Users
 
 - **Project managers and Scrum Masters:** run the tool each week and send the report.
-- **Executives and sponsors:** read the status, the summary, and the risks in one minute.
+- **Executives and sponsors:** read the status and the risks in one minute.
 - **Team leads:** see the blocked and overdue work, with the owner and the days.
 
 ## How it works
