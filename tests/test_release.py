@@ -72,3 +72,12 @@ def test_v2_notes_are_ready_for_the_release():
     for task in range(1, 10):
         assert f"- S{task}:" in section
     assert "team-managed" in section and "https://srg-app.streamlit.app" in section
+
+
+def test_ci_tests_every_supported_python_version():
+    # The public demo runs on Python 3.14 (Streamlit Community Cloud).
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    versions = {workflow["jobs"]["checks"]["steps"][2]["with"]["python-version"]}
+    versions |= set(workflow["jobs"]["python-versions"]["strategy"]["matrix"]["python"])
+    assert versions == {"3.11", "3.12", "3.13", "3.14"}
+    assert workflow["jobs"]["python-versions"]["name"] == "Tests on Python ${{ matrix.python }}"

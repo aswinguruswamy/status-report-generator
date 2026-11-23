@@ -181,7 +181,8 @@ python scripts/make_sample.py           # make the sample report again after a l
 - **Demo test:** the sample data goes through the real Jira client, rules and report, offline.
 - **Golden file:** the sample report in `examples/` must match the report made from the demo.
 - **CI** (GitHub Actions) runs the secret scan, the style check, the dependency and licence
-  scans, and all tests on Python 3.11, 3.12, and 3.13 for each pull request.
+  scans, and all tests on Python 3.11, 3.12, 3.13 and 3.14 for each pull request. (The public
+  demo runs on Python 3.14.)
 
 ## Project documents
 
