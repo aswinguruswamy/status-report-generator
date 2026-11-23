@@ -48,3 +48,13 @@ def test_release_workflow_runs_on_version_tags_with_pinned_actions():
         for line in workflow_file.read_text().splitlines():
             if "uses:" in line:
                 assert re.search(r"@[0-9a-f]{40} # v\d", line), (workflow_file.name, line)
+
+
+def test_ci_scans_dependencies_and_licences():
+    # Shared CI standard SH1: dependency audit and licence scan on each pull request.
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    job = workflow["jobs"]["audits"]
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "pip-audit" in commands
+    assert "pip-licenses" in commands
+    assert "--fail-on=" in commands
