@@ -7,6 +7,7 @@ SRG v2 (spec `specs/spec.md` v1.3).
 - S1: The AI summary is removed: `ai.py`, `evaluation.py`, `eval/`, the `ai:` settings and the `anthropic` package (spec §2 non-goals).
 - S2: Settings v2: a `teams:` list (project key + team name); each v1 setting is optional with its v1 default; `timezone` defaults to the computer; new `forecast` setting. Clear start-up errors for no teams, a duplicate project, an unknown project, no token and a rejected token (SRG-R13.1–R13.3).
 - S3: Jira reads for v2: active sprints (board → active sprints), the next release (fix version), the first closed ticket; teams read 4 at a time; a failed team does not stop the others. Recorded sample data for 4 made-up teams in `demo/` (`scripts/make_demo.py`).
+- S4: Spec §4 definitions in code: counted, cleaned up, done, open, the 14-day window (local time), effective due date, overdue, blocked, not started, colour scope (sprint or last 14 days) and done/total.
 
 ## v1.0.0 (2026-10-24)
 
