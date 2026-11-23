@@ -138,7 +138,7 @@ def test_ac29_one_team_fails_and_the_other_shows():
 
 def test_ac33_problem_tickets_sorted_by_colour_priority_key_and_window_line():
     tickets = [
-        ticket("BET-9", priority="Medium", due=1),  # Amber P3? Not high: Amber still shows
+        ticket("BET-9", priority="Medium", due=1),  # Amber P3: shown in the details
         ticket("BET-2", priority="Highest", status="Blocked", due=9),
         ticket("BET-5", priority="High", status="Blocked", due=9),
         ticket("BET-1", priority="Low", due=9),  # Green: not in the details
@@ -197,3 +197,17 @@ def test_demo_table():
     assert "Urgent" in " ".join(table.warnings)
     assert table.as_of == "as of 09:42"
     assert all(p.url is None for r in table.rows for p in r.problems)
+
+
+def test_as_of_on_a_utc_evening_that_is_another_local_day():  # S6 review
+    late = datetime(2026, 7, 2, 2, 5, tzinfo=UTC)  # Summer time: 22:05 on 1 Jul in Toronto
+    table = build_portfolio(CONFIG, {"ALP": data("ALP", []), "BET": data("BET", [])}, late)
+    assert table.as_of == "as of 22:05" and table.read_date == "2026-07-01"
+
+
+def test_error_without_text_and_ticket_without_priority():  # S6 review
+    results = {"ALP": data("ALP", [ticket("ALP-1", priority=None, status="Blocked", due=9)]),
+               "BET": JiraError("")}
+    rows = {r.key: r for r in build_portfolio(CONFIG, results, NOW).rows}
+    assert rows["BET"].reason == "Could not read – JiraError"
+    assert (rows["ALP"].problems[0].priority, rows["ALP"].problems[0].level) == ("-", "Unmapped")
