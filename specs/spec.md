@@ -1,9 +1,9 @@
 # Spec: SRG v2 – Team status table and report
 
-Version: 1.4 | Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = consistency fix; 1.2 = his MCF trim decision; 1.3 = video; 1.4 = screenshots in place of the video, his decision 2026-11-23) | Date: 2026-11-23
-Tool: SRG | MoSCoW: Must (R4 forecast: Should) | Source: `specs/SRG/requirements.md` v1.3, `clarify/SRG-clarify-log.md`, SRG v1 code (`status.py`, `project.py`, `metrics.py`, `config.yaml`, read on 2026-11-22)
+Version: 1.4.1 | Status: **APPROVED by Aswin Guruswamy, 2026-11-22** (1.1 = consistency fix; 1.2 = his MCF trim decision; 1.3 = video; 1.4 = screenshots in place of the video, his decision 2026-11-23; 1.4.1 = admin text fixes) | Date: 2026-11-23
+Tool: SRG | MoSCoW: Must (R4 forecast: Should) | Source: `specs/requirements.md` v1.4, `clarify/SRG-clarify-log.md`, SRG v1 code (`status.py`, `project.py`, `metrics.py`, `config.yaml`, read on 2026-11-22)
 
-Requirement IDs `SRG-Rn` match R1–R14 and N1–N8 on the requirements page.
+Requirement IDs `SRG-Rn` match R1–R15 and N1–N8 on the requirements page (N9 is a proposal of this spec).
 Sources: `R`/`N` = requirements page; `SRG-x.y` = SRG clarify log; `SH-x.y` = shared clarify log; `v1` = rule already in SRG v1 code; `proposal` = Claude's proposal, confirmed only by approval of this spec.
 
 ## 1. Problem
@@ -198,7 +198,7 @@ Sending the report (email, Slack, Teams) · AI summary · programs · history an
 - [x] Edge cases – section 9
 - [x] Data and privacy: what goes to the AI – nothing (no AI)
 - [x] Freshness and time stamps – R3.2
-- [x] Acceptance criteria testable – AC1–AC44
+- [x] Acceptance criteria testable – AC1–AC45
 - [x] Dependencies on other specs – MCF simulation code; the exact function is a plan item
 - [x] Cost and limits – N6
 
@@ -248,6 +248,7 @@ Result: **pass (pre-check)**. Approved by Aswin on 2026-11-22.
 | 0.3 | 2026-11-22 | Independent review fixes; definitions; v1 team rule, blocked and settings; planned date; 5-week minimum; AC1–AC44 | – |
 | 1.0 | 2026-11-22 | Approved as is, including the proposals R2.2, R11.3, R12.2, N5 read-only, N9 | Aswin Guruswamy |
 | 1.1 | 2026-11-22 | Consistency fix, no scope change: R4.1 "weekly counts" → "daily counts" (the MCF method); short history depends on MCF R8 | Claude (admin fix, allowed by CLAUDE.md §5) |
-| 1.3 | 2026-11-22 | Video (R15.1) | Aswin Guruswamy (SH-4.4) |
 | 1.2 | 2026-11-22 | Forecast needs 12 weeks of history (was 5), because the MCF young-team rule is cut; R4.1 uses the MCF 84-day window | Aswin Guruswamy (MCF trim decision) |
+| 1.3 | 2026-11-22 | Video (R15.1) | Aswin Guruswamy (SH-4.4) |
 | 1.4 | 2026-11-23 | R15.1 and AC45: screenshots of the table, the details and the report in place of the video | Aswin Guruswamy |
+| 1.4.1 | 2026-11-23 | Admin text fixes from the audit, no scope change: source path and version, R1–R15, AC1–AC45 in the checklist, change log in order | Claude (admin fix, allowed by CLAUDE.md §5) |

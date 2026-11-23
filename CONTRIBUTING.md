@@ -8,7 +8,7 @@ SRG is one of three PM tools (MCF, SRG, RAID) that share these rules. They come 
 
 ## While you change
 3. **Write the test first**, then the code.
-4. **Every bug gets a test first** that shows the bug. For AI behaviour, also add a sample (eval case).
+4. **Every bug gets a test first** that shows the bug. For AI behaviour (MCF and RAID; SRG v2 has no AI), also add a sample (eval case).
 5. **Code writes the facts.** Numbers, dates, owners and colours come from code. The AI may choose or phrase, but it never invents a fact.
 6. **No secrets in Git.** Keys and tokens live only in a local `.env` file or in GitHub repository secrets.
 7. **Plain language.** Error messages say what happened and what to do.

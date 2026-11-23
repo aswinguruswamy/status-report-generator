@@ -7,10 +7,10 @@ teams:
   - key: BET
     name: Beta
 
-# All settings below are optional. The value shown is the default.
+# All settings below are optional. The value shown is the default, except timezone:
+# without the timezone line, the tool uses this computer's time zone.
 
-# Time zone for "today", the 14-day window and the "as of" time.
-# Default: the time zone of this computer.
+# Time zone for "today", the 14-day window and the "as of" time (example value).
 timezone: America/Toronto
 
 # Work types that the tool counts. Epics and sub-tasks are not counted.
