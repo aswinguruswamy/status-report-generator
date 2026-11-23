@@ -43,3 +43,16 @@ def test_each_document_in_the_docs_index_is_in_docs():
 def test_readme_links_to_files_in_docs():
     for target in re.findall(r"\]\((docs/[^)]+)\)", README):
         assert (ROOT / target).exists(), target
+
+
+def test_known_limits_is_the_first_section():
+    # Shared item SH5: "Known limits" at the top of every README (SRG v2 spec N8).
+    first = next(line for line in README.splitlines() if line.startswith("## "))
+    assert first == "## Known limits"
+
+
+def test_contributing_rules_exist():
+    # Shared rules for MCF, SRG and RAID (constitution P9, P12; SH4).
+    text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    for words in ("specs/", "test first", "bug", "CI"):
+        assert words in text, words
