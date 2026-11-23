@@ -98,6 +98,15 @@ CI scans each change for secrets.
 
 ## How to run
 
+**Web page** (the team table; click a team row for its tickets; Refresh; Generate report):
+
+```
+streamlit run app.py                   # real Jira data: needs .env and config.yaml
+streamlit run demo_app.py              # made-up sample data: no Jira account, no token
+```
+
+**Command** (writes the same report without the page):
+
 ```
 status-report                          # read every team in config.yaml, write the report
 status-report --demo                   # the same with the sample data: no Jira, no token
