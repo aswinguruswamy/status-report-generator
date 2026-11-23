@@ -1,0 +1,11 @@
+# Settings for the demo (sample data, spec SRG-R14.1). The teams are made up.
+teams:
+  - key: ALP
+    name: Alpha
+  - key: BET
+    name: Beta
+  - key: GAM
+    name: Gamma
+  - key: DEL
+    name: Delta
+timezone: America/Toronto
