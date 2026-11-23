@@ -8,6 +8,15 @@ the RAG status. The Claude API writes a short executive summary, and the tool ch
 **Sample report** (made-up data): [Markdown](examples/DEMO-2026-W43.md) ·
 [HTML](examples/DEMO-2026-W43.html)
 
+## Known limits
+
+- Tested on Jira Cloud **team-managed** projects only. Company-managed projects can have
+  other status names and fields.
+- One Jira project for each run.
+- The report reads Jira. It does not send anything to Confluence, Slack or e-mail (not in v2 either).
+- The flag and the label methods for "blocked" use today's value, because Jira does not keep
+  their history. The status method uses the history.
+
 ## The problem
 
 Each week, a project manager reads Jira, counts the work, decides on a status colour, and
@@ -164,15 +173,6 @@ python scripts/make_sample.py           # make the sample report again after a l
   prompt or the model. It shows the AI text for each failed sample.
 - **CI** (GitHub Actions) runs the secret scan, the style check, and all tests on Python 3.11,
   3.12, and 3.13 for each pull request.
-
-## Known limits
-
-- Tested on Jira Cloud **team-managed** projects only. Company-managed projects can have
-  other status names and fields.
-- One Jira project for each run.
-- The report reads Jira. It does not write to Confluence or Slack (planned for v2).
-- The flag and the label methods for "blocked" use today's value, because Jira does not keep
-  their history. The status method uses the history.
 
 ## Project documents
 
