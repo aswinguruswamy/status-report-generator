@@ -193,12 +193,16 @@ class JiraClient:
         return None
 
     def _cloud_id(self) -> str:
-        response = self._session.get(
-            f"{self.site_url}/_edge/tenant_info", timeout=TIMEOUT_SECONDS
-        )
-        if response.status_code != 200:
+        try:
+            response = self._session.get(
+                f"{self.site_url}/_edge/tenant_info", timeout=TIMEOUT_SECONDS
+            )
+            cloud_id = response.json().get("cloudId") if response.status_code == 200 else None
+        except (requests.RequestException, ValueError, AttributeError):
+            cloud_id = None
+        if not cloud_id:
             raise JiraError(BAD_TOKEN, status=401)
-        return response.json()["cloudId"]
+        return cloud_id
 
     # --- conversion ----------------------------------------------------
 

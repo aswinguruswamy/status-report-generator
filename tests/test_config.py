@@ -198,6 +198,26 @@ def test_team_without_a_name_names_the_line(tmp_path):
         load_config(path)
 
 
+def test_blank_or_list_team_name_is_an_error(tmp_path):
+    for name in ('"  "', "[a, b]", "true"):
+        with pytest.raises(ConfigError, match="team 1 needs a project key and a team name"):
+            load_config(write_config(tmp_path, f"teams:\n  - {{key: ALP, name: {name}}}\n"))
+
+
+def test_yes_no_project_key_must_be_quoted(tmp_path):
+    for key in ("NO", "ON"):
+        with pytest.raises(ConfigError, match="put the project key in quotes"):
+            load_config(write_config(tmp_path, f"teams:\n  - {{key: {key}, name: N}}\n"))
+    config = load_config(write_config(tmp_path, 'teams:\n  - {key: "NO", name: N}\n'))
+    assert config.teams[0].key == "NO"
+
+
+def test_time_zone_that_is_a_folder_is_an_error(tmp_path):
+    path = repo_config_with(tmp_path, "timezone: America/Toronto", "timezone: America")
+    with pytest.raises(ConfigError, match="'America' is not a time zone"):
+        load_config(path)
+
+
 def test_wrong_project_key_is_an_error(tmp_path):
     with pytest.raises(ConfigError, match="'AL P' is not a Jira project key"):
         load_config(write_config(tmp_path, "teams:\n  - {key: AL P, name: Alpha}\n"))
