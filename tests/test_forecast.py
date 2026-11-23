@@ -141,3 +141,41 @@ def test_demo_forecasts():
     assert not rows["Beta"].forecast.later
     assert rows["Gamma"].forecast.text.startswith("Forecast ")  # Release without a date
     assert rows["Delta"].forecast.text == NOT_ENOUGH_HISTORY  # Young team
+
+
+def fixed_mc85(monkeypatch, day):
+    """Make the MCF result a known date, to check the exact text (AC39)."""
+    from status_report import forecast as module
+
+    real = module.forecast_from_counts
+
+    def fake(counts, t, backlog):
+        result = real(counts, t, backlog)
+        return replace(result, mc85=day)
+
+    monkeypatch.setattr(module, "forecast_from_counts", fake)
+
+
+def test_ac39_exact_text(monkeypatch):  # S7 review
+    fixed_mc85(monkeypatch, date(2027, 1, 9))
+    data = team_data(closed_every(84) + open_tickets(5), release=Release("2.4", date(2026, 12, 15)))
+    assert team_forecast(data, CONFIG, NOW).text == "Planned 15 Dec · Forecast 9 Jan · later than planned"
+
+
+def test_forecast_on_the_planned_date_is_not_late(monkeypatch):  # S7 review
+    fixed_mc85(monkeypatch, date(2026, 12, 15))
+    data = team_data(closed_every(84) + open_tickets(5), release=Release("2.4", date(2026, 12, 15)))
+    result = team_forecast(data, CONFIG, NOW)
+    assert not result.later and result.text == "Planned 15 Dec · Forecast 15 Dec"
+
+
+def test_close_just_before_local_midnight_counts_on_the_local_day():  # S7 review
+    from datetime import UTC, datetime
+
+    from status_report.models import StatusChange
+
+    late = datetime(2026, 12, 1, 4, 30, tzinfo=UTC)  # 23:30 on 30 Nov in Toronto
+    t = ticket("BET-1", status="Done", sprints=(),
+               history=[StatusChange(late, "In Progress", "Done", "In Progress", "Done")])
+    counts = daily_closed_counts(team_data([t]), CONFIG, TODAY)
+    assert counts[-2] == 1 and counts[-1] == 0
