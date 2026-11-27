@@ -1,6 +1,6 @@
 # Runtime
 requests==2.34.2
-PyYAML==6.0.3
+PyYAML==6.0.4
 python-dotenv==1.2.4
 # MCF forecast code (spec R4.1). Pinned to the MCF v2.0.0 release tag (MCF decision MD1).
 # pip-audit cannot check a git dependency; MCF runs its own audit. Its packages are pinned here.
