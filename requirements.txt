@@ -13,4 +13,4 @@ streamlit==1.66.1
 
 # Development
 pytest==9.2.0
-ruff==0.17.5
+ruff==0.17.6
